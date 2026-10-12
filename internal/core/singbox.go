@@ -216,6 +216,12 @@ func singBoxTLS(s *model.Server) map[string]any {
 		tls["disable_sni"] = true
 	}
 	fp := t.Fingerprint
+	// uTLS "randomized" (and Xray's "randomizednoalpn") fails every
+	// handshake in sing-box 1.14 with "CurvePreferences includes unsupported
+	// curve"; "random" picks a random real browser fingerprint instead.
+	if strings.HasPrefix(fp, "randomized") {
+		fp = "random"
+	}
 	if t.Security == "reality" {
 		fp = orDefault(fp, "chrome") // REALITY requires uTLS
 		tls["reality"] = map[string]any{"enabled": true, "public_key": t.PublicKey, "short_id": t.ShortID}

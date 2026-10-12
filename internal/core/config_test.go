@@ -100,6 +100,18 @@ func TestChooseMatrix(t *testing.T) {
 	}
 }
 
+func TestRandomizedFingerprint(t *testing.T) {
+	srv := corpusServer(t, "vless-ws-tls-ed")
+	srv.TLS.Fingerprint = "randomized"
+	out, err := singBoxOutbound(srv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fp := out["tls"].(map[string]any)["utls"].(map[string]any)["fingerprint"]; fp != "random" {
+		t.Fatalf("fingerprint = %v, want random", fp)
+	}
+}
+
 func TestWebSocketALPN(t *testing.T) {
 	out, err := singBoxOutbound(corpusServer(t, "vless-ws-tls-ed"))
 	if err != nil {
