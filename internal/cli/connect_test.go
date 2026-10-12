@@ -95,21 +95,13 @@ func TestConnectWorkflow(t *testing.T) {
 		t.Fatal("status --json has no local_proxy")
 	}
 
-	// The tunnel reaches a target served on loopback.
-	target, _ := net.Listen("tcp", "127.0.0.1:0")
+	// The tunnel reaches a target served on loopback. A real HTTP server
+	// reads the request before answering: on Windows, closing a socket with
+	// unread data sends RST and the response is lost.
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(204) }))
 	defer target.Close()
-	go func() {
-		for {
-			c, err := target.Accept()
-			if err != nil {
-				return
-			}
-			c.Write([]byte("HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"))
-			c.Close()
-		}
-	}()
-	url := "http://" + target.Addr().String() + "/"
-	host := target.Addr().(*net.TCPAddr).IP.String()
+	url := target.URL + "/"
+	host := target.Listener.Addr().(*net.TCPAddr).IP.String()
 	testOK := func(step string) {
 		t.Helper()
 		if code, out, errOut := run("test", url, "--socket", sock); code != 0 || !strings.HasPrefix(out, "ok, ") {
