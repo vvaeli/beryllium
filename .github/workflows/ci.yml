@@ -64,3 +64,24 @@ jobs:
       - run: go -C tools run ./fetchcores
       - run: go build ./...
       - run: go test -race ./...
+
+  # Real TUN on Linux: the daemon as root in a container (scripts/tun-e2e.sh).
+  tun-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Cache cores
+        uses: actions/cache@v4
+        with:
+          path: cores/bin
+          key: cores-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('cores/versions.json') }}
+      - run: go -C tools run ./fetchcores
+      - run: mkdir -p .dev/linux && go build -o .dev/linux/ ./cmd/berylliumd ./cmd/beryl
+      - run: >
+          docker run --rm --cap-add NET_ADMIN --device /dev/net/tun
+          --sysctl net.ipv6.conf.all.disable_ipv6=0
+          -v "$PWD/.dev/linux":/b -v "$PWD/cores/bin/linux-amd64":/c:ro -v "$PWD/scripts":/s:ro
+          golang:1.27 sh -c 'apt-get -qq update && apt-get -qq install -y iproute2 >/dev/null && /s/tun-e2e.sh'

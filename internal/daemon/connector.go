@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -294,10 +295,15 @@ func (c *connector) pick(ctx context.Context, serverID, subID string) (model.Ser
 }
 
 // settingsChanged reconfigures a live connection when something it uses
-// changed.
-func (c *connector) settingsChanged(old, cur *berylliumv1.Settings) {
+// changed. Setting the mode explicitly switches a connection that runs in
+// another mode (e.g. started with `connect --mode tun`), even when the
+// stored default didn't change.
+func (c *connector) settingsChanged(old, cur *berylliumv1.Settings, paths []string) {
 	mode := berylliumv1.Mode_MODE_UNSPECIFIED
-	if old.GetMode() != cur.GetMode() {
+	c.mu.Lock()
+	live := c.mode
+	c.mu.Unlock()
+	if (len(paths) == 0 || slices.Contains(paths, "mode")) && cur.GetMode() != live {
 		mode = cur.GetMode()
 	} else if proto.Equal(old.GetRouting(), cur.GetRouting()) && proto.Equal(old.GetDns(), cur.GetDns()) {
 		return

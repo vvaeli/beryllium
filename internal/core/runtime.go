@@ -476,7 +476,7 @@ func (r *Runtime) URLTest(ctx context.Context, target string) (time.Duration, er
 			lastErr = fmt.Errorf("HTTP %d", resp.StatusCode)
 			continue
 		}
-		return time.Since(start), nil
+		return elapsed(start), nil
 	}
 	return 0, lastErr
 }

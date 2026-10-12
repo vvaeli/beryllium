@@ -309,8 +309,10 @@ func TestBuild(t *testing.T) {
 		t.Fatal(err)
 	}
 	rules := toJSON(t, plan.Rules)
+	if pre := toJSON(t, plan.PreRules); pre != `[{"action":"reject","mode":"and","rules":[{"ip_version":6},{"invert":true,"port":53}],"type":"logical"}]` {
+		t.Errorf("pre rules = %s", pre)
+	}
 	want := []string{
-		`{"action":"reject","ip_version":6}`,
 		`{"action":"route","domain_suffix":["corp.example"],"outbound":"direct"}`,
 		`{"action":"reject","ip_cidr":["203.0.113.7/32"]}`,
 		`{"action":"route","ip_is_private":true,"outbound":"direct"}`,
@@ -367,7 +369,7 @@ func TestBuild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(toJSON(t, plan.Rules), "ip_version") || plan.Final != TagProxy || plan.DNS["strategy"] != nil {
+	if len(plan.PreRules) != 0 || plan.Final != TagProxy || plan.DNS["strategy"] != nil {
 		t.Errorf("plain plan: %s", toJSON(t, plan))
 	}
 

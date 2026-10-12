@@ -102,6 +102,9 @@ type Input struct {
 
 // Plan holds the parts of the sing-box config that routing owns.
 type Plan struct {
+	// PreRules go before the core's own rules, ahead of sniffing, so they
+	// can be matched per packet.
+	PreRules []any
 	// Rules go after the core's own rules (sniff, DNS hijack, loop
 	// prevention).
 	Rules    []any
@@ -112,8 +115,8 @@ type Plan struct {
 	Warnings []string
 }
 
-// Build translates in into a Plan. Order: IPv6 policy, user rules, LAN
-// direct, the profile's groups in RouteOrder, then final.
+// Build translates in into a Plan. Order: IPv6 policy (PreRules), user
+// rules, LAN direct, the profile's groups in RouteOrder, then final.
 func Build(in Input) (*Plan, error) {
 	b := &builder{in: in, plan: &Plan{Final: TagProxy}, ruleSets: map[string]bool{}}
 	if p := in.Profile; p != nil && !p.GlobalProxy {
@@ -203,7 +206,17 @@ func withAction(m map[string]any, a Action) map[string]any {
 func (b *builder) routeRules() {
 	add := func(r map[string]any) { b.plan.Rules = append(b.plan.Rules, r) }
 	if !b.in.DNS.IPv6 {
-		add(map[string]any{"ip_version": 6, "action": "reject"})
+		// Placed before sniffing so sing-box rejects at the packet level
+		// (pre-match): the client gets a refused connection and falls back
+		// to IPv4 at once. Matched after the TUN stack has accepted the
+		// connection, the reject arrives as a reset and browsers that
+		// reached a site over IPv6 (e.g. via HTTPS-record ipv6hint or their
+		// own DoH) show "connection reset". DNS on port 53 is left to the
+		// DNS hijack.
+		b.plan.PreRules = append(b.plan.PreRules, map[string]any{
+			"type": "logical", "mode": "and", "action": "reject",
+			"rules": []any{map[string]any{"ip_version": 6}, map[string]any{"port": 53, "invert": true}},
+		})
 	}
 	// The user's rules win over everything else, then LAN and private
 	// networks always go direct.
@@ -257,11 +270,7 @@ func (b *builder) routeRules() {
 // firstProfileRule is the index of the first rule after the fixed and
 // user rules.
 func (b *builder) firstProfileRule() int {
-	n := 2 + len(b.in.Rules)
-	if !b.in.DNS.IPv6 {
-		n++
-	}
-	return min(n, len(b.plan.Rules))
+	return min(2+len(b.in.Rules), len(b.plan.Rules))
 }
 
 // siteRule merges domain rules of one group into a single sing-box rule

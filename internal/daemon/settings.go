@@ -26,8 +26,9 @@ type settingsStore struct {
 
 	mu  sync.Mutex
 	cur *berylliumv1.Settings
-	// onChange runs after a successful update with the previous settings.
-	onChange func(old, cur *berylliumv1.Settings)
+	// onChange runs after a successful update with the previous settings
+	// and the updated paths (empty: everything).
+	onChange func(old, cur *berylliumv1.Settings, paths []string)
 }
 
 func defaultSettings() *berylliumv1.Settings {
@@ -102,7 +103,7 @@ func (s *settingsStore) update(in *berylliumv1.Settings, mask []string) (*beryll
 	cb := s.onChange
 	s.mu.Unlock()
 	if cb != nil {
-		cb(old, proto.Clone(next).(*berylliumv1.Settings))
+		cb(old, proto.Clone(next).(*berylliumv1.Settings), mask)
 	}
 	return proto.Clone(next).(*berylliumv1.Settings), nil
 }

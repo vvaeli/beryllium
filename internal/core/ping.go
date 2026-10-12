@@ -122,7 +122,7 @@ func tcpPing(ctx context.Context, s *model.Server, timeout time.Duration) (time.
 	if err != nil {
 		return 0, err
 	}
-	lat := time.Since(start)
+	lat := elapsed(start)
 	c.Close()
 	return lat, nil
 }
@@ -320,7 +320,7 @@ func httpGetVia(ctx context.Context, port int, target string, timeout time.Durat
 		}
 		return 0, err
 	}
-	lat := time.Since(start)
+	lat := elapsed(start)
 	resp.Body.Close()
 	if resp.StatusCode >= 500 {
 		return 0, fmt.Errorf("HTTP %d", resp.StatusCode)
@@ -332,4 +332,11 @@ func randHex(n int) string {
 	b := make([]byte, n)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+// elapsed is time.Since(start), but never zero for a completed measurement:
+// Go's monotonic clock on Windows ticks coarsely, so loopback round trips
+// can measure as 0, and 0 means "no response" in latency results.
+func elapsed(start time.Time) time.Duration {
+	return max(time.Since(start), time.Microsecond)
 }

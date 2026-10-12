@@ -86,7 +86,7 @@ func icmpPing(ctx context.Context, host string, timeout time.Duration) (time.Dur
 		}
 		// Unprivileged sockets may rewrite the ID; match on the payload.
 		if echo, ok := reply.Body.(*icmp.Echo); ok && bytes.Equal(echo.Data, payload) {
-			return time.Since(start), nil
+			return elapsed(start), nil
 		}
 	}
 }

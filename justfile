@@ -45,6 +45,26 @@ run-daemon *args:
 fetch-cores *args:
     go -C tools run ./fetchcores {{args}}
 
+# Tests in a Linux container like CI (unprivileged, no ICMP); needs Docker (colima on macOS)
+test-linux: (fetch-linux-cores)
+    docker run --rm --sysctl net.ipv4.ping_group_range="1 0" --user 1000:1000 \
+        -e HOME=/tmp -e GOCACHE=/tmp/gocache -v beryllium-gomod:/go/pkg/mod \
+        -v "$PWD":/src -w /src golang:1.27 go test -race ./...
+
+# TUN end-to-end in a Linux container as root (scripts/tun-e2e.sh)
+test-linux-tun: (fetch-linux-cores)
+    mkdir -p .dev/linux
+    GOOS=linux GOARCH={{linux_arch}} go build -o .dev/linux/ ./cmd/berylliumd ./cmd/beryl
+    docker run --rm --cap-add NET_ADMIN --device /dev/net/tun --sysctl net.ipv6.conf.all.disable_ipv6=0 \
+        -v "$PWD/.dev/linux":/b -v "$PWD/cores/bin/linux-{{linux_arch}}":/c:ro -v "$PWD/scripts":/s:ro golang:1.27 \
+        sh -c 'apt-get -qq update && apt-get -qq install -y iproute2 >/dev/null && /s/tun-e2e.sh'
+
+linux_arch := `go env GOARCH`
+
+# Download cores for Linux on this CPU architecture (for the container tests)
+fetch-linux-cores:
+    go -C tools run ./fetchcores -platform linux-{{linux_arch}}
+
 # Update cores/versions.json to the latest releases
 bump-cores:
     go -C tools run ./fetchcores -bump

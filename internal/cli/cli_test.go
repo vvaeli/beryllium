@@ -5,12 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -20,6 +20,23 @@ import (
 	"github.com/vvaeli/beryllium/internal/paths"
 	"google.golang.org/grpc"
 )
+
+type syncBuffer struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (s *syncBuffer) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.Write(p)
+}
+
+func (s *syncBuffer) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.String()
+}
 
 func startDaemon(t *testing.T) string {
 	t.Helper()
@@ -32,9 +49,16 @@ func startDaemon(t *testing.T) string {
 	if runtime.GOOS == "windows" {
 		sock = fmt.Sprintf(`\\.\pipe\beryllium-cli-test-%d`, time.Now().UnixNano())
 	}
+	// The daemon and core logs are printed when the test fails.
+	logs := &syncBuffer{}
+	t.Cleanup(func() {
+		if t.Failed() {
+			t.Logf("daemon log:\n%s", logs.String())
+		}
+	})
 	d := daemon.New(daemon.Options{
 		Paths: paths.Paths{StateDir: filepath.Join(dir, "state"), LogDir: dir, Socket: sock, CoresDir: repoCores()},
-		Log:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Log:   slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)

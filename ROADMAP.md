@@ -172,8 +172,8 @@
 
 ### 6B. TUN
 - [x] 6.6 TUN-inbound sing-box: `auto_route`, `strict_route`, `route.auto_detect_interface`, `stack: mixed`, MTU 9000, адреса IPv4 и IPv6. Нужен root/Administrator, без него — понятная ошибка
-- [ ] 6.7 🍎 проверить, что `utun` поднимается от launchd-демона и маршруты удаляются при остановке
-- [ ] 6.8 🐧 проверить совместимость с NetworkManager, systemd-resolved, nftables/iptables, а также без systemd (runit/OpenRC + connman/iwd/dhcpcd)
+- [x] 6.7 🍎 `utun` поднимается от root, трафик идёт через туннель (проверено вручную). Остаётся проверить запуск именно через launchd (фаза 7)
+- [ ] 6.8 🐧 проверить совместимость с NetworkManager, systemd-resolved, nftables/iptables, а также без systemd (runit/OpenRC + connman/iwd/dhcpcd). Уже есть: `scripts/tun-e2e.sh` (`just test-linux-tun`, задача `tun-e2e` в CI) поднимает TUN от root в контейнере и проверяет трафик, отказ IPv6, перехват DNS, переключение режимов и очистку маршрутов
 - [ ] 6.9 🪟 wintun: sing-box встраивает драйвер, протестировать на Windows 10 и 11
 - [x] 6.10 Защита от петли: `auto_detect_interface` для самого sing-box и правило `process_path → direct` для Xray, mihomo, sing-box (замеры задержки) и демона (geo-файлы, подписки)
 - [x] 6.11 Переключение TUN ↔ системный прокси ↔ локальный прокси на лету без потери сервера и ядра (`beryl mode`, `UpdateSettings(mode)`)

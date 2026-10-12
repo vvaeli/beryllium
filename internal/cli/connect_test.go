@@ -66,8 +66,13 @@ func TestConnectWorkflow(t *testing.T) {
 	if !strings.Contains(out, " ms  Local SS") || !strings.Contains(out, "fail  Dead SS") || !strings.Contains(out, "fastest: Local SS") {
 		t.Fatalf("tcp ping: %s", out)
 	}
-	if out = mustRun("ping", "local", "--method", "icmp"); !strings.Contains(out, " ms  Local SS") && !strings.Contains(out, "not permitted") {
-		t.Fatalf("icmp ping: %s", out)
+	// ICMP sockets may be forbidden (e.g. Linux CI without ping_group_range);
+	// then the command reports it and exits 1.
+	code, out, _ := run("ping", "local", "--method", "icmp", "--socket", sock)
+	replied := code == 0 && strings.Contains(out, " ms  Local SS")
+	forbidden := code == 1 && strings.Contains(out, "not permitted")
+	if !replied && !forbidden {
+		t.Fatalf("icmp ping: exit %d %s", code, out)
 	}
 	// Only HTTP results feed the latency column: refresh it after tcp/icmp.
 	mustRun("ping", "--url", pingTarget.URL, "--timeout-per-server", "2s")
@@ -103,24 +108,30 @@ func TestConnectWorkflow(t *testing.T) {
 			c.Close()
 		}
 	}()
-	if out = mustRun("test", "http://"+target.Addr().String()+"/"); !strings.HasPrefix(out, "ok, ") {
-		t.Fatalf("test: %s", out)
-	}
-
-	// User rules apply live: block the target, then remove the rule.
+	url := "http://" + target.Addr().String() + "/"
 	host := target.Addr().(*net.TCPAddr).IP.String()
+	testOK := func(step string) {
+		t.Helper()
+		if code, out, errOut := run("test", url, "--socket", sock); code != 0 || !strings.HasPrefix(out, "ok, ") {
+			t.Fatalf("test (%s): exit %d %s%s", step, code, out, errOut)
+		}
+	}
+	// Private addresses go direct by default; a user rule sends this one
+	// through the tunnel (front → shadowsocks server → target).
+	mustRun("rules", "add", "ip", host, "proxy")
+	testOK("through the tunnel")
+	// Rules apply live: block the target.
+	mustRun("rules", "rm", "1")
 	if out = mustRun("rules", "add", "ip", host, "block"); !strings.Contains(out, "ip-cidr") || !strings.Contains(out, host) {
 		t.Fatalf("rules add: %s", out)
 	}
-	if code, out, _ := run("test", "http://"+target.Addr().String()+"/", "--socket", sock); code == 0 {
+	if code, out, _ := run("test", url, "--socket", sock); code == 0 {
 		t.Fatalf("test passed through a block rule: %s", out)
 	}
 	if out = mustRun("rules", "rm", "1"); !strings.Contains(out, "no rules") {
 		t.Fatalf("rules rm: %s", out)
 	}
-	if out = mustRun("test", "http://"+target.Addr().String()+"/"); !strings.HasPrefix(out, "ok, ") {
-		t.Fatalf("test after rm: %s", out)
-	}
+	testOK("LAN direct")
 
 	// Routing profiles: builtins, import, activate, share, remove.
 	if out = mustRun("routing"); !strings.Contains(out, "* ") || !strings.Contains(out, "Proxy everything") || !strings.Contains(out, "Russia direct") {

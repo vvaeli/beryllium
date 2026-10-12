@@ -98,7 +98,11 @@ func singBoxConfig(f singBoxFront) ([]byte, error) {
 	inbounds := []any{map[string]any{
 		"type": "mixed", "tag": "mixed-in", "listen": "127.0.0.1", "listen_port": f.MixedPort,
 	}}
-	rules := []any{map[string]any{"action": "sniff"}}
+	var rules []any
+	if f.Routing != nil {
+		rules = append(rules, f.Routing.PreRules...)
+	}
+	rules = append(rules, map[string]any{"action": "sniff"})
 	route := map[string]any{"final": routing.TagProxy, "default_domain_resolver": "local"}
 	if t := f.TUN; t != nil {
 		inbounds = append(inbounds, map[string]any{
