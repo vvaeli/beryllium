@@ -28,5 +28,6 @@ gui/build/
 cores/bin/
 
 # Local secrets / state
+.dev/
 .env
 *.local.json

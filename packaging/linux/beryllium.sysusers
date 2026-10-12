@@ -1,0 +1,2 @@
+# Members of this group may control berylliumd over /run/beryllium/beryllium.sock.
+g beryllium - -

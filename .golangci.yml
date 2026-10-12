@@ -11,8 +11,14 @@ linters:
     - unconvert
     - unparam
   exclusions:
+    presets:
+      - std-error-handling
+      - common-false-positives
     paths:
       - gen/
+    rules:
+      - path: _test\.go
+        linters: [errcheck]
 
 formatters:
   enable:

@@ -4,13 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Phases 0 (repo scaffolding) and 1 (proto API) are done; everything else is design agreed with the user before implementation. `ROADMAP.md` is the step-by-step plan from empty repo to 1.0, with numbered steps (e.g. `7.10`): follow its order, tick `[x]` when a step is done, and reference step numbers in commits. 
+Phases 0–2 (scaffolding, proto API, daemon skeleton) are done; everything else is design agreed with the user before implementation. `ROADMAP.md` is the step-by-step plan from empty repo to 1.0, with numbered steps (e.g. `7.10`): follow its order, tick `[x]` when a step is done, and reference step numbers in commits. 
 
 ## Commands
 
 - `just build` builds `berylliumd` and `beryl` into `bin/` (version is injected via ldflags into `internal/version`)
 - `just test` runs `go test -race ./...`; for a single test, `go test -run TestName ./internal/<pkg>`
-- `just lint` runs golangci-lint (v2 config in `.golangci.yml`; `gen/` is excluded) and checks gofmt
+- `just lint` runs buf lint, golangci-lint v2.14.0 via `go run` (same version as CI; older versions can't read Go 1.27 export data) and a gofmt check. Lint all OSes, since files are split by build tags: build the linter once, then run `GOOS=linux|windows <linter> run ./...`
+- `just run-daemon` runs the daemon unprivileged with state, logs and socket in `.dev/`
 - `just gen` formats protos and regenerates `gen/go` (committed; CI fails if it is stale). `just breaking` checks proto changes against `main`
 - buf, protoc-gen-go and protoc-gen-go-grpc are tool deps in the separate `tools/go.mod` module and run via `go tool -modfile=tools/go.mod <tool>`. Don't install them globally, and don't add tool deps to the root `go.mod`
 - `just fetch-cores` / `gui-dev` are placeholders until ROADMAP 5.2 / 9.1
@@ -53,6 +54,14 @@ Beryllium is a cross-platform desktop proxy/VPN client for Arch Linux, macOS and
 ## Conventions
 
 - The subscription URL is a secret: never commit it, log it in full, or paste it into tooling output.
+
+## Daemon internals
+
+- `internal/daemon` wires everything: `Daemon.Run` listens on IPC, serves gRPC and stops on ctx cancel or the `Shutdown` RPC. Services not yet implemented embed `Unimplemented*Server`. `cmd/berylliumd` adapts it to kardianos/service (`install|uninstall|start|stop|restart|status`). When Run ends on its own, the process exits so the service manager's restart policy applies
+- `internal/ipc`: unix socket (Linux/macOS) or named pipe (Windows). Access is enforced per connection by kernel peer credentials (SO_PEERCRED / LOCAL_PEERCRED) or by the pipe's SDDL. Always allowed: root/SYSTEM/Admins and the daemon's own user; also uids/SIDs in `daemon.json` (written by `install` from SUDO_UID or the elevated user), plus the `beryllium` group on Linux. Unix socket paths must be under 104 bytes
+- `internal/redact.ReplaceAttr` is installed on every slog handler. Any new log sink must use it so subscription URLs, share links and UUIDs are masked
+- `internal/store.Store[T]`: versioned JSON (`{"schema_version", "data"}`) with atomic temp+rename writes and mode 0600. A schema change means appending a `Migration`, never editing old ones
+- OS-specific code is split by filename suffix (`_linux.go`, `_darwin.go`, `_windows.go`) or `//go:build linux || darwin`
 
 ## API (proto)
 

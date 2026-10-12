@@ -65,24 +65,24 @@
 
 ## Фаза 2. Скелет демона
 
-- [ ] 2.1 `cmd/berylliumd/main.go`: флаги `--config-dir`, `--log-level`, `--foreground`
-- [ ] 2.2 Пути по ОС (`internal/paths`): 🐧 `/var/lib/beryllium`, `/run/beryllium/beryllium.sock`; 🍎 `/Library/Application Support/Beryllium`, `/var/run/beryllium.sock`; 🪟 `%ProgramData%\Beryllium`, `\\.\pipe\beryllium`
-- [ ] 2.3 Логирование на `log/slog`: JSON в файл с ротацией (`lumberjack`), текст в stderr в режиме foreground
-- [ ] 2.4 Маскирование секретов: в логах URL подписки и UUID серверов урезаются (`https://host/…`, `uuid=ab12…`), плюс тест на это
-- [ ] 2.5 Хранилище состояния (`internal/store`): один JSON-файл с атомарной записью (temp + rename), права `0600`, версия схемы и миграции
-- [ ] 2.6 IPC-листенер: unix socket на 🐧🍎, named pipe на 🪟 (`github.com/Microsoft/go-winio`)
-- [ ] 2.7 Контроль доступа к IPC:
+- [x] 2.1 `cmd/berylliumd/main.go`: флаги `--config-dir`, `--log-level`, `--foreground`
+- [x] 2.2 Пути по ОС (`internal/paths`): 🐧 `/var/lib/beryllium`, `/run/beryllium/beryllium.sock`; 🍎 `/Library/Application Support/Beryllium`, `/var/run/beryllium.sock`; 🪟 `%ProgramData%\Beryllium`, `\\.\pipe\beryllium`
+- [x] 2.3 Логирование на `log/slog`: JSON в файл с ротацией (`lumberjack`), текст в stderr в режиме foreground
+- [x] 2.4 Маскирование секретов: в логах URL подписки и UUID серверов урезаются (`https://host/…`, `uuid=ab12…`), плюс тест на это
+- [x] 2.5 Хранилище состояния (`internal/store`): один JSON-файл с атомарной записью (temp + rename), права `0600`, версия схемы и миграции
+- [x] 2.6 IPC-листенер: unix socket на 🐧🍎, named pipe на 🪟 (`github.com/Microsoft/go-winio`)
+- [x] 2.7 Контроль доступа к IPC:
   - 🐧 группа `beryllium`, сокет с правами `0660`, проверка `SO_PEERCRED`;
-  - 🍎 `getpeereid`, доступ только у владельца, указанного при установке;
-  - 🪟 security descriptor пайпа: SYSTEM + конкретный пользователь
-- [ ] 2.8 gRPC-сервер на этом листенере с заглушками всех сервисов (`Unimplemented`)
-- [ ] 2.9 `DaemonService.Version/Health` реализованы честно
-- [ ] 2.10 Graceful shutdown по SIGTERM/SIGINT или остановке службы: остановить ядра, вернуть системный прокси, закрыть сокет
-- [ ] 2.11 Интеграция со службами через `kardianos/service`: команды `berylliumd install|uninstall|start|stop`
-- [ ] 2.12 🐧 `packaging/linux/berylliumd.service` (systemd, `CAP_NET_ADMIN`, `Restart=on-failure`)
-- [ ] 2.13 🍎 `packaging/macos/dev.beryllium.daemon.plist` (launchd, `KeepAlive`, `RunAtLoad`)
-- [ ] 2.14 🪟 служба Windows с автоматическим перезапуском при сбое
-- [ ] 2.15 Тест: демон стартует, отвечает на `Version` через сокет и корректно останавливается
+  - 🍎 `LOCAL_PEERCRED`, доступ у root и у пользователя, запустившего `sudo berylliumd install` (uid из `SUDO_UID` пишется в `daemon.json`);
+  - 🪟 security descriptor пайпа: SYSTEM, Administrators и SID пользователя из `daemon.json`
+- [x] 2.8 gRPC-сервер на этом листенере с заглушками всех сервисов (`Unimplemented`)
+- [x] 2.9 `DaemonService.Version/Health` реализованы честно
+- [x] 2.10 Graceful shutdown по SIGTERM/SIGINT или остановке службы: остановить ядра, вернуть системный прокси, закрыть сокет
+- [x] 2.11 Интеграция со службами через `kardianos/service`: команды `berylliumd install|uninstall|start|stop`
+- [x] 2.12 🐧 `packaging/linux/berylliumd.service` (systemd, `CAP_NET_ADMIN`, `Restart=on-failure`)
+- [x] 2.13 🍎 `packaging/macos/io.github.vvaeli.beryllium.plist` (launchd, `KeepAlive`, `RunAtLoad`)
+- [x] 2.14 🪟 служба Windows с автоматическим перезапуском при сбое
+- [x] 2.15 Тест: демон стартует, отвечает на `Version` через сокет и корректно останавливается
 
 **Готово, когда:** демон ставится службой на трёх ОС и отвечает на `Health`.
 
@@ -101,7 +101,7 @@
 ## Фаза 4. Подписки и парсинг
 
 - [ ] 4.1 Внутренняя модель `internal/model`: `Server` с нормализованными полями (протокол, транспорт, TLS/Reality, flow, SNI, fingerprint, alpn, путь, хост и т.д.). Ни к одному ядру не привязана
-- [ ] 4.2 Загрузчик подписки. Принимает любой `http(s)` URL с нестандартным портом, путём и query: `https://host:2096/sub/<token>` (3x-ui), `/sub/<token>` (Marzban, Remnawave, Marzneshin) и т.д. Для `http://` — предупреждение. Перед загрузкой обрезать пробелы и переносы строк (при вставке из мессенджеров). Таймауты, ретраи, свой `User-Agent` (некоторые панели отдают разный формат в зависимости от UA), загрузка идёт **в обход туннеля**
+- [ ] 4.2 Загрузчик подписки. Принимает любой `http(s)` URL: без порта (стандартные 443/80) и с любым портом, с путём и query: `https://host/sub/<token>`, `https://host:2096/sub/<token>` (3x-ui), `/sub/<token>` (Marzban, Remnawave, Marzneshin) и т.д. Для `http://` — предупреждение. Перед загрузкой обрезать пробелы и переносы строк (при вставке из мессенджеров). Таймауты, ретраи, свой `User-Agent` (некоторые панели отдают разный формат в зависимости от UA), загрузка идёт **в обход туннеля**
 - [ ] 4.3 Разбор заголовков панели: `subscription-userinfo` (трафик и срок), `profile-title`, `profile-update-interval`, `support-url`
 - [ ] 4.4 Определение формата: base64-список URI / plain-список URI / sing-box JSON / Clash YAML / Xray JSON
 - [ ] 4.5 Парсер `vless://`: reality (pbk, sid, spx), tls, flow, transports tcp/ws/grpc/h2/httpupgrade/xhttp
