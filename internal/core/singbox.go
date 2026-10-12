@@ -1,6 +1,7 @@
 package core
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/vvaeli/beryllium/internal/model"
+	"github.com/vvaeli/beryllium/internal/routing"
 )
 
 func singBoxSupports(s *model.Server) error {
@@ -61,7 +63,25 @@ type singBoxFront struct {
 	// Server is connected to directly; nil means forward to BackendPort.
 	Server      *model.Server
 	BackendPort int
+	// TUN adds a TUN inbound; nil runs only the local proxy.
+	TUN *TUN
+	// Routing supplies rules, rule-sets and DNS; nil proxies everything.
+	Routing *routing.Plan
+	// DirectProcesses always bypass the tunnel in TUN mode (backend cores,
+	// sing-box itself for latency tests, the daemon), so their connections
+	// to servers don't loop back into TUN.
+	DirectProcesses []string
 }
+
+// TUN options of the front.
+type TUN struct {
+	// Stack is system, gvisor or mixed (default).
+	Stack string
+	MTU   int
+}
+
+// tunAddresses are private ranges sing-box uses for its TUN interface.
+var tunAddresses = []string{"172.19.0.1/30", "fdfe:dcba:9876::1/126"}
 
 func singBoxConfig(f singBoxFront) ([]byte, error) {
 	var proxy map[string]any
@@ -73,15 +93,42 @@ func singBoxConfig(f singBoxFront) ([]byte, error) {
 	} else {
 		proxy = map[string]any{"type": "socks", "server": "127.0.0.1", "server_port": f.BackendPort, "version": "5"}
 	}
-	proxy["tag"] = "proxy"
+	proxy["tag"] = routing.TagProxy
+
+	inbounds := []any{map[string]any{
+		"type": "mixed", "tag": "mixed-in", "listen": "127.0.0.1", "listen_port": f.MixedPort,
+	}}
+	rules := []any{map[string]any{"action": "sniff"}}
+	route := map[string]any{"final": routing.TagProxy, "default_domain_resolver": "local"}
+	if t := f.TUN; t != nil {
+		inbounds = append(inbounds, map[string]any{
+			"type": "tun", "tag": "tun-in", "address": tunAddresses,
+			"mtu": cmp.Or(t.MTU, 9000), "stack": cmp.Or(t.Stack, "mixed"),
+			"auto_route": true, "strict_route": true,
+		})
+		route["auto_detect_interface"] = true
+		rules = append(rules, map[string]any{"protocol": "dns", "action": "hijack-dns"})
+		if len(f.DirectProcesses) > 0 {
+			rules = append(rules, map[string]any{"process_path": f.DirectProcesses, "action": "route", "outbound": routing.TagDirect})
+		}
+	}
+	dns := map[string]any{"servers": []any{map[string]any{"type": "local", "tag": "local"}}}
+	if p := f.Routing; p != nil {
+		rules = append(rules, p.Rules...)
+		if len(p.RuleSets) > 0 {
+			route["rule_set"] = p.RuleSets
+		}
+		route["final"] = p.Final
+		dns = p.DNS
+	}
+	route["rules"] = rules
+
 	cfg := map[string]any{
-		"log": map[string]any{"level": f.LogLevel, "timestamp": false},
-		"dns": map[string]any{"servers": []any{map[string]any{"type": "local", "tag": "local"}}},
-		"inbounds": []any{map[string]any{
-			"type": "mixed", "tag": "mixed-in", "listen": "127.0.0.1", "listen_port": f.MixedPort,
-		}},
-		"outbounds": []any{map[string]any{"type": "direct", "tag": "direct"}},
-		"route":     map[string]any{"final": "proxy", "default_domain_resolver": "local"},
+		"log":       map[string]any{"level": f.LogLevel, "timestamp": false},
+		"dns":       dns,
+		"inbounds":  inbounds,
+		"outbounds": []any{map[string]any{"type": "direct", "tag": routing.TagDirect}},
+		"route":     route,
 		"experimental": map[string]any{"clash_api": map[string]any{
 			"external_controller": fmt.Sprintf("127.0.0.1:%d", f.APIPort), "secret": f.APISecret,
 		}},

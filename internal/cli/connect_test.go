@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -104,6 +105,61 @@ func TestConnectWorkflow(t *testing.T) {
 	}()
 	if out = mustRun("test", "http://"+target.Addr().String()+"/"); !strings.HasPrefix(out, "ok, ") {
 		t.Fatalf("test: %s", out)
+	}
+
+	// User rules apply live: block the target, then remove the rule.
+	host := target.Addr().(*net.TCPAddr).IP.String()
+	if out = mustRun("rules", "add", "ip", host, "block"); !strings.Contains(out, "ip-cidr") || !strings.Contains(out, host) {
+		t.Fatalf("rules add: %s", out)
+	}
+	if code, out, _ := run("test", "http://"+target.Addr().String()+"/", "--socket", sock); code == 0 {
+		t.Fatalf("test passed through a block rule: %s", out)
+	}
+	if out = mustRun("rules", "rm", "1"); !strings.Contains(out, "no rules") {
+		t.Fatalf("rules rm: %s", out)
+	}
+	if out = mustRun("test", "http://"+target.Addr().String()+"/"); !strings.HasPrefix(out, "ok, ") {
+		t.Fatalf("test after rm: %s", out)
+	}
+
+	// Routing profiles: builtins, import, activate, share, remove.
+	if out = mustRun("routing"); !strings.Contains(out, "* ") || !strings.Contains(out, "Proxy everything") || !strings.Contains(out, "Russia direct") {
+		t.Fatalf("routing ls: %s", out)
+	}
+	prof := filepath.Join(t.TempDir(), "p.json")
+	os.WriteFile(prof, []byte(`{"Name":"Test Profile","GlobalProxy":"false","ProxySites":["domain:example.org"],"BlockIp":["198.51.100.0/24"]}`), 0o600)
+	if out = mustRun("routing", "import", prof); !strings.Contains(out, "Test Profile") || !strings.Contains(out, "active") {
+		t.Fatalf("routing import: %s", out)
+	}
+	if out = mustRun("status"); !strings.Contains(out, "connected") {
+		t.Fatalf("status after profile switch: %s", out)
+	}
+	if out = mustRun("routing", "share", "test profile"); !strings.HasPrefix(out, "happ://routing/onadd/") {
+		t.Fatalf("routing share: %s", out)
+	}
+	mustRun("routing", "use", "proxy everything")
+	mustRun("routing", "rm", "test profile")
+	if out = mustRun("routing"); strings.Contains(out, "Test Profile") {
+		t.Fatalf("profile not removed: %s", out)
+	}
+
+	if out = mustRun("dns", "--ipv6", "tunnel", "--remote", "tls://9.9.9.9"); !strings.Contains(out, "ipv6:     tunnel") || !strings.Contains(out, "tls://9.9.9.9") {
+		t.Fatalf("dns: %s", out)
+	}
+	if code, _, errOut := run("dns", "--remote", "sdns://x", "--socket", sock); code != 1 || !strings.Contains(errOut, "remote DNS") {
+		t.Fatalf("bad resolver accepted: %s", errOut)
+	}
+	if out = mustRun("env", "--shell", "fish"); !strings.Contains(out, "set -gx http_proxy \"http://127.0.0.1:") {
+		t.Fatalf("env: %s", out)
+	}
+	if out = mustRun("mode"); strings.TrimSpace(out) != "local" {
+		t.Fatalf("mode: %s", out)
+	}
+	if runtime.GOOS != "windows" && os.Geteuid() != 0 {
+		code, _, errOut := run("connect", "local ss", "--mode", "tun", "--socket", sock)
+		if code != 1 || !strings.Contains(errOut, "root") {
+			t.Fatalf("tun without root: exit %d %s", code, errOut)
+		}
 	}
 
 	code, _, errOut := run("connect", "local ss", "--core", "mihomo", "--socket", sock)

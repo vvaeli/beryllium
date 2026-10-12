@@ -10,6 +10,7 @@ import (
 	"github.com/vvaeli/beryllium/internal/link"
 	"github.com/vvaeli/beryllium/internal/model"
 	"github.com/vvaeli/beryllium/internal/redact"
+	"github.com/vvaeli/beryllium/internal/routing"
 	"github.com/vvaeli/beryllium/internal/subscription"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -21,6 +22,7 @@ type subscriptionService struct {
 	berylliumv1.UnimplementedSubscriptionServiceServer
 	subs    *subscription.Manager
 	latency *latencyCache
+	routes  *routing.Manager
 }
 
 func (s *subscriptionService) AddSubscription(ctx context.Context, req *berylliumv1.AddSubscriptionRequest) (*berylliumv1.AddSubscriptionResponse, error) {
@@ -137,7 +139,15 @@ func (s *subscriptionService) GetShareLink(_ context.Context, req *berylliumv1.G
 		}
 		return &berylliumv1.GetShareLinkResponse{Uri: uri}, nil
 	case *berylliumv1.GetShareLinkRequest_RoutingProfileId:
-		return nil, status.Error(codes.Unimplemented, "routing profiles are not implemented yet")
+		r, _, err := s.routes.Get(t.RoutingProfileId)
+		if err != nil {
+			return nil, routingErr(err)
+		}
+		uri, err := r.Profile.Link()
+		if err != nil {
+			return nil, status.Error(codes.FailedPrecondition, err.Error())
+		}
+		return &berylliumv1.GetShareLinkResponse{Uri: uri}, nil
 	default:
 		return nil, status.Error(codes.InvalidArgument, "target is required")
 	}

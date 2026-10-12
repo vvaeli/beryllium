@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/vvaeli/beryllium/internal/model"
+	"github.com/vvaeli/beryllium/internal/routing"
 )
 
 // DefaultMixedPort is the preferred local HTTP+SOCKS5 port; a free one is
@@ -42,10 +43,28 @@ type Status struct {
 	Core       Kind
 	Reason     string
 	LocalProxy string
-	Since      time.Time
-	Restarts   int
-	Err        error
+	// TUN is set while the chain runs with a TUN inbound.
+	TUN      bool
+	Since    time.Time
+	Restarts int
+	// Warnings from building the routing config (e.g. missing geo tags).
+	Warnings []string
+	Err      error
 }
+
+// ConnectOptions select how a server is run.
+type ConnectOptions struct {
+	// Core overrides automatic core selection.
+	Core Kind
+	// TUN captures all system traffic; needs root/Administrator.
+	TUN *TUN
+	// Routing is built by internal/routing; nil proxies everything.
+	Routing *routing.Plan
+}
+
+// ErrTUNPrivileges is returned when TUN is requested by an unprivileged
+// daemon.
+var ErrTUNPrivileges = errors.New("TUN mode needs the daemon to run as root (Administrator on Windows); install it as a service with `sudo berylliumd install`")
 
 // Traffic counters and rates from the front core.
 type Traffic struct {
@@ -77,6 +96,7 @@ type Runtime struct {
 
 type session struct {
 	srv       model.Server
+	opts      ConnectOptions
 	choice    Choice
 	mixedPort int
 	backend   int
@@ -124,25 +144,28 @@ func (r *Runtime) Status() Status {
 }
 
 // Connect starts srv on the chosen core, replacing any running chain.
-func (r *Runtime) Connect(ctx context.Context, srv model.Server, override Kind) (Status, error) {
-	choice, err := Choose(&srv, override, r.opts.Binaries.Installed)
+func (r *Runtime) Connect(ctx context.Context, srv model.Server, o ConnectOptions) (Status, error) {
+	choice, err := Choose(&srv, o.Core, r.opts.Binaries.Installed)
 	if err != nil {
 		return r.Status(), err
+	}
+	if o.TUN != nil && !privileged() {
+		return r.Status(), ErrTUNPrivileges
 	}
 	r.Disconnect()
 
 	r.mu.Lock()
-	r.status = Status{State: StateConnecting, Server: &srv, Core: choice.Kind, Reason: choice.Reason}
+	r.status = Status{State: StateConnecting, Server: &srv, Core: choice.Kind, Reason: choice.Reason, TUN: o.TUN != nil}
 	r.mu.Unlock()
 
-	s := &session{srv: srv, choice: choice, stop: make(chan struct{})}
+	s := &session{srv: srv, opts: o, choice: choice, stop: make(chan struct{})}
 	err = r.prepare(s)
 	if err == nil {
 		err = r.launch(ctx, s)
 	}
 	if err != nil {
 		r.mu.Lock()
-		r.status = Status{State: StateFailed, Server: &srv, Core: choice.Kind, Reason: choice.Reason, Err: err}
+		r.status = Status{State: StateFailed, Server: &srv, Core: choice.Kind, Reason: choice.Reason, TUN: o.TUN != nil, Err: err}
 		st := r.status
 		r.mu.Unlock()
 		return st, err
@@ -152,12 +175,41 @@ func (r *Runtime) Connect(ctx context.Context, srv model.Server, override Kind) 
 	r.sess = s
 	r.last = trafficSample{}
 	r.status = Status{State: StateConnected, Server: &srv, Core: choice.Kind, Reason: choice.Reason,
-		LocalProxy: fmt.Sprintf("127.0.0.1:%d", s.mixedPort), Since: time.Now()}
+		LocalProxy: fmt.Sprintf("127.0.0.1:%d", s.mixedPort), TUN: o.TUN != nil, Since: time.Now()}
+	if o.Routing != nil {
+		r.status.Warnings = o.Routing.Warnings
+	}
 	st := r.status
 	r.mu.Unlock()
 	go r.monitor(s)
-	r.opts.Log.Info("connected", "server", srv.Name, "core", choice.Kind, "proxy", st.LocalProxy)
+	r.opts.Log.Info("connected", "server", srv.Name, "core", choice.Kind, "proxy", st.LocalProxy, "tun", st.TUN)
 	return st, nil
+}
+
+// Reconfigure restarts the running chain with new options, keeping the
+// server and, unless o.Core is set, the core. It does nothing when
+// disconnected.
+func (r *Runtime) Reconfigure(ctx context.Context, o ConnectOptions) (Status, error) {
+	r.mu.Lock()
+	s := r.sess
+	r.mu.Unlock()
+	if s == nil {
+		return r.Status(), nil
+	}
+	if o.Core == "" {
+		o.Core = s.choice.Kind
+	}
+	return r.Connect(ctx, s.srv, o)
+}
+
+// Options returns the options of the running chain.
+func (r *Runtime) Options() (ConnectOptions, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.sess == nil {
+		return ConnectOptions{}, false
+	}
+	return r.sess.opts, true
 }
 
 // Disconnect stops the running chain, if any.
@@ -203,7 +255,11 @@ func (r *Runtime) prepare(s *session) error {
 	_, _ = rand.Read(secret)
 	s.apiSecret = hex.EncodeToString(secret)
 
-	front := singBoxFront{MixedPort: s.mixedPort, APIPort: s.apiPort, APISecret: s.apiSecret, LogLevel: "warn"}
+	front := singBoxFront{MixedPort: s.mixedPort, APIPort: s.apiPort, APISecret: s.apiSecret, LogLevel: "warn",
+		TUN: s.opts.TUN, Routing: s.opts.Routing}
+	if s.opts.TUN != nil {
+		front.DirectProcesses = r.directProcesses()
+	}
 	switch s.choice.Kind {
 	case SingBox:
 		front.Server = &s.srv
@@ -423,6 +479,28 @@ func (r *Runtime) URLTest(ctx context.Context, target string) (time.Duration, er
 		return time.Since(start), nil
 	}
 	return 0, lastErr
+}
+
+// directProcesses must bypass TUN: the cores (backends dial the server
+// themselves; sing-box also runs latency tests) and the daemon (geo and
+// subscription downloads).
+func (r *Runtime) directProcesses() []string {
+	// The OS reports resolved paths, so symlinks (e.g. a linked cores dir)
+	// must be resolved too.
+	resolve := func(p string) string {
+		if resolved, err := filepath.EvalSymlinks(p); err == nil {
+			return resolved
+		}
+		return p
+	}
+	var out []string
+	for _, k := range Kinds {
+		out = append(out, resolve(r.opts.Binaries.Path(k)))
+	}
+	if exe, err := os.Executable(); err == nil {
+		out = append(out, resolve(exe))
+	}
+	return out
 }
 
 func (r *Runtime) args(k Kind) []string {

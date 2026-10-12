@@ -69,8 +69,8 @@ message ImportRoutingProfileRequest {
     // Raw profile JSON.
     string json = 2;
   }
-  // Activate after geo data is ready. Defaults to the deeplink's mode
-  // (onadd activates, add does not).
+  // Defaults to true: onadd links (and raw JSON) activate at once, add
+  // links once the geo data is downloaded (as in INCY). false only imports.
   optional bool activate = 3;
 }
 

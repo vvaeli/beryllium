@@ -149,7 +149,7 @@ func TestRuntimeEndToEnd(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			r := newTestRuntime(t, bins)
-			st, err := r.Connect(context.Background(), tc.srv, tc.override)
+			st, err := r.Connect(context.Background(), tc.srv, ConnectOptions{Core: tc.override})
 			if err != nil {
 				t.Fatalf("Connect: %v", err)
 			}
@@ -175,7 +175,7 @@ func TestRuntimeEndToEnd(t *testing.T) {
 	t.Run("recovers after a core crash", func(t *testing.T) {
 		r := newTestRuntime(t, bins)
 		ss := cases[0].srv
-		if _, err := r.Connect(context.Background(), ss, ""); err != nil {
+		if _, err := r.Connect(context.Background(), ss, ConnectOptions{}); err != nil {
 			t.Fatal(err)
 		}
 		r.mu.Lock()
@@ -214,7 +214,7 @@ func TestRuntimeEndToEnd(t *testing.T) {
 		r := New(Options{Binaries: LoadBinaries(relCores), WorkDir: filepath.Base(work), MixedPort: port,
 			Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
 		t.Cleanup(r.Close)
-		if _, err := r.Connect(context.Background(), cases[0].srv, ""); err != nil {
+		if _, err := r.Connect(context.Background(), cases[0].srv, ConnectOptions{}); err != nil {
 			t.Fatalf("Connect with relative dirs: %v", err)
 		}
 		if got := getThrough(t, r, target.URL); got != "hello through the tunnel" {
@@ -226,7 +226,7 @@ func TestRuntimeEndToEnd(t *testing.T) {
 		r := newTestRuntime(t, bins)
 		bad := model.Server{Protocol: model.VLESS, Address: "127.0.0.1", Port: 1, UUID: "x",
 			Transport: &model.Transport{Type: "xhttp", Extra: "{not json"}}
-		if _, err := r.Connect(context.Background(), bad, ""); err == nil || r.Status().State != StateFailed {
+		if _, err := r.Connect(context.Background(), bad, ConnectOptions{}); err == nil || r.Status().State != StateFailed {
 			t.Fatalf("Connect(bad) err=%v status=%+v", err, r.Status())
 		}
 	})

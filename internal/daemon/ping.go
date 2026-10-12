@@ -34,6 +34,20 @@ func (c *latencyCache) put(id string, lat time.Duration) {
 	c.m[id] = latencyEntry{latency: lat, at: time.Now()}
 }
 
+// fastest returns the server with the lowest cached HTTP latency.
+func (c *latencyCache) fastest(servers []model.Server) (model.Server, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var best model.Server
+	var bestLat time.Duration
+	for _, s := range servers {
+		if e, ok := c.m[s.ID]; ok && e.latency > 0 && (bestLat == 0 || e.latency < bestLat) {
+			best, bestLat = s, e.latency
+		}
+	}
+	return best, bestLat > 0
+}
+
 // annotate fills Server.latency and latency_tested_at.
 func (c *latencyCache) annotate(p *berylliumv1.Server) *berylliumv1.Server {
 	c.mu.Lock()

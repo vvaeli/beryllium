@@ -12,9 +12,11 @@
 
 - **Любые протоколы из подписки:** VLESS (Reality, XHTTP и др.), VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard, **AmneziaWG**
 - **Несколько ядер:** [sing-box](https://github.com/SagerNet/sing-box), [Xray](https://github.com/XTLS/Xray-core) и [mihomo](https://github.com/MetaCubeX/mihomo) (для AmneziaWG). Для каждого сервера автоматически выбирается подходящее ядро, его можно переопределить вручную
-- **Два режима:** TUN (весь трафик системы) и системный прокси, переключаются на лету
+- **Три режима:** TUN (весь трафик системы), системный прокси и только локальный прокси, переключаются на лету без переподключения к другому серверу
 - **Переживает сон и смену сети:** ждёт готовности сети после пробуждения, сбрасывает мёртвые соединения и DNS-кеш; постоянный watchdog с автоматическим восстановлением и переключением на резервный сервер
-- **Маршрутизация:** RU-сайты и локальная сеть напрямую, пользовательские правила, раздельное туннелирование по приложениям. **Правила от провайдера в формате Happ/INCY** (заголовок `routing`, ссылки `happ://routing/…`) применяются автоматически
+- **Маршрутизация:** пресеты «всё через VPN», «RU напрямую», «только заблокированное», пользовательские правила, раздельное туннелирование по приложениям. **Профили Happ/INCY** (заголовок `routing`, ссылки `happ://routing/…`, `incy://routing/…`) применяются автоматически, geo-файлы `geoip.dat`/`geosite.dat` поддерживаются
+- **DNS без утечек:** DoH через туннель, перехват DNS в TUN, IPv6 блокируется по умолчанию, FakeIP по желанию
+- **Любой Linux:** Arch, Debian, Fedora, Artix и др.; systemd, OpenRC, runit, dinit, s6; GNOME, KDE, Hyprland, niri, sway
 - **Три интерфейса:** GUI с треем, TUI для терминала, CLI для скриптов
 - **Без встроенных серверов:** подписка добавляется пользователем
 - **QR-коды:** покажите подписку или сервер QR-кодом, чтобы быстро добавить на телефон. Импорт с экрана или из картинки
@@ -64,6 +66,9 @@ xattr -dr com.apple.quarantine /Applications/Beryllium.app
 ```sh
 sudo usermod -aG beryllium $USER
 ```
+Служба ставится под любую init-систему: `sudo berylliumd install` сам определит systemd, OpenRC, runit, dinit или s6.
+
+На Hyprland, niri, sway и других окружениях без общей настройки прокси используйте режим TUN (`beryl mode tun`): режим системного прокси там действует только на приложения, запущенные после подключения.
 
 ## Быстрый старт
 
@@ -74,10 +79,17 @@ sudo usermod -aG beryllium $USER
 beryl sub add 'https://…/sub/…' --name main   # добавить подписку
 beryl servers                                  # список серверов
 beryl connect <server>                         # подключиться (имя, часть имени или ID)
-beryl status                                   # статус, ядро, локальный прокси, трафик
+beryl connect --auto --mode tun                # самый быстрый сервер, весь трафик системы
+beryl mode proxy                               # сменить режим на лету: tun | proxy | local
+beryl status --watch                           # статус, ядро, локальный прокси, трафик
 beryl test                                     # проверить связь через туннель
 beryl disconnect
 beryl sub qr <id>                              # QR-код подписки прямо в терминале
+beryl routing                                  # профили маршрутизации (пресеты, от провайдера, свои)
+beryl routing import 'happ://routing/onadd/…'  # импорт профиля Happ/INCY
+beryl rules add process Telegram proxy         # своё правило: приложение через VPN
+beryl dns --ipv6 block                         # настройки DNS
+eval "$(beryl env)"                            # прокси для текущего терминала
 ```
 
 **TUI:**

@@ -50,17 +50,9 @@ func (s *daemonService) Shutdown(context.Context, *berylliumv1.ShutdownRequest) 
 	return &berylliumv1.ShutdownResponse{}, nil
 }
 
-// Services below are implemented in later phases (ROADMAP 6–7) and return
+// Services below are implemented in later phases (ROADMAP 7) and return
 // codes.Unimplemented until then.
-
-type settingsService struct {
-	berylliumv1.UnimplementedSettingsServiceServer
-}
 
 type logService struct {
 	berylliumv1.UnimplementedLogServiceServer
-}
-
-type routingService struct {
-	berylliumv1.UnimplementedRoutingServiceServer
 }

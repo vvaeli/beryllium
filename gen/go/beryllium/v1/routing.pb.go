@@ -354,8 +354,8 @@ type ImportRoutingProfileRequest struct {
 	//	*ImportRoutingProfileRequest_Uri
 	//	*ImportRoutingProfileRequest_Json
 	Source isImportRoutingProfileRequest_Source `protobuf_oneof:"source"`
-	// Activate after geo data is ready. Defaults to the deeplink's mode
-	// (onadd activates, add does not).
+	// Defaults to true: onadd links (and raw JSON) activate at once, add
+	// links once the geo data is downloaded (as in INCY). false only imports.
 	Activate      *bool `protobuf:"varint,3,opt,name=activate,proto3,oneof" json:"activate,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net"
@@ -15,6 +16,7 @@ import (
 	"github.com/vvaeli/beryllium/internal/core"
 	"github.com/vvaeli/beryllium/internal/ipc"
 	"github.com/vvaeli/beryllium/internal/paths"
+	"github.com/vvaeli/beryllium/internal/routing"
 	"github.com/vvaeli/beryllium/internal/store"
 	"github.com/vvaeli/beryllium/internal/subscription"
 	"github.com/vvaeli/beryllium/internal/version"
@@ -52,6 +54,9 @@ type Daemon struct {
 	rt        *core.Runtime
 	pinger    *core.Pinger
 	latency   *latencyCache
+	settings  *settingsStore
+	routes    *routing.Manager
+	conn      *connector
 
 	shutdownOnce sync.Once
 	shutdownCh   chan struct{}
@@ -94,7 +99,26 @@ func (d *Daemon) Run(ctx context.Context) error {
 	d.rt = core.New(core.Options{Binaries: bins, WorkDir: d.paths.StateDir, Log: d.log})
 	d.pinger = &core.Pinger{Binaries: bins, WorkDir: d.paths.StateDir}
 	d.latency = newLatencyCache()
-	defer d.rt.Close()
+
+	if d.settings, err = openSettings(store.Open[json.RawMessage](d.paths.StateFile("settings.json"))); err != nil {
+		return err
+	}
+	d.routes, err = routing.NewManager(store.Open[routing.State](d.paths.StateFile("routing.json")),
+		&routing.GeoCache{Dir: d.paths.StateFile("geo")}, d.log)
+	if err != nil {
+		return err
+	}
+	d.conn = &connector{log: d.log, paths: d.paths, rt: d.rt, bins: bins, subs: d.subs, routes: d.routes,
+		settings: d.settings, pinger: d.pinger, latency: d.latency}
+	d.conn.restoreStale(ctx)
+	defer d.conn.shutdown()
+	d.settings.onChange = d.conn.settingsChanged
+	d.routes.OnChange = func() { d.conn.reconfigure(context.Background(), berylliumv1.Mode_MODE_UNSPECIFIED) }
+	d.subs.OnUpdate = func(r subscription.Record) {
+		if r.Routing != "" && d.settings.get().GetRouting().GetApplyProviderRouting() {
+			d.routes.ImportFromSubscription(context.Background(), r.ID, r.Routing)
+		}
+	}
 
 	ln, err := ipc.Listen(d.paths.Socket, ipc.Access{
 		UIDs:   cfg.AllowedUIDs,
@@ -115,6 +139,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 	bgCtx, stopBackground := context.WithCancel(ctx)
 	defer stopBackground()
 	go d.subs.Run(bgCtx, time.Minute)
+	go d.routes.Run(bgCtx)
 
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.Serve(ln) }()
@@ -136,7 +161,6 @@ func (d *Daemon) Run(ctx context.Context) error {
 	case <-time.After(gracePeriod):
 		srv.Stop()
 	}
-	// Later phases restore system proxy settings and stop cores here.
 	if err := <-serveErr; err != nil && !errors.Is(err, grpc.ErrServerStopped) && !errors.Is(err, net.ErrClosed) {
 		return err
 	}
@@ -151,10 +175,10 @@ func (d *Daemon) requestShutdown() {
 
 func (d *Daemon) register(s *grpc.Server) {
 	berylliumv1.RegisterDaemonServiceServer(s, &daemonService{d: d})
-	berylliumv1.RegisterSubscriptionServiceServer(s, &subscriptionService{subs: d.subs, latency: d.latency})
-	berylliumv1.RegisterConnectionServiceServer(s, &connectionService{rt: d.rt, subs: d.subs, latency: d.latency})
+	berylliumv1.RegisterSubscriptionServiceServer(s, &subscriptionService{subs: d.subs, latency: d.latency, routes: d.routes})
+	berylliumv1.RegisterConnectionServiceServer(s, &connectionService{c: d.conn, rt: d.rt, latency: d.latency})
 	berylliumv1.RegisterTestServiceServer(s, &testService{rt: d.rt, subs: d.subs, pinger: d.pinger, latency: d.latency})
-	berylliumv1.RegisterSettingsServiceServer(s, &settingsService{})
+	berylliumv1.RegisterSettingsServiceServer(s, &settingsService{s: d.settings})
 	berylliumv1.RegisterLogServiceServer(s, &logService{})
-	berylliumv1.RegisterRoutingServiceServer(s, &routingService{})
+	berylliumv1.RegisterRoutingServiceServer(s, &routingService{routes: d.routes})
 }

@@ -1,0 +1,21 @@
+#!/sbin/openrc-run
+# Beryllium daemon for OpenRC (Artix, Gentoo, Alpine).
+
+name="berylliumd"
+description="Beryllium proxy/VPN daemon"
+command="/usr/bin/berylliumd"
+supervisor="supervise-daemon"
+respawn_delay=2
+respawn_max=0
+output_log="/var/log/beryllium/stderr.log"
+error_log="/var/log/beryllium/stderr.log"
+
+depend() {
+	# The daemon waits for the network itself.
+	use net dns
+	after firewall
+}
+
+start_pre() {
+	checkpath -d -m 0755 /var/log/beryllium
+}

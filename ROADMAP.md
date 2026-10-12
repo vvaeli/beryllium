@@ -161,54 +161,56 @@
 
 ## Фаза 6. Режимы подключения, DNS, маршрутизация
 
+Режимы, DNS и маршрутизация живут в демоне: `internal/routing` строит правила и DNS для sing-box, `internal/sysproxy` меняет настройки ОС, `internal/daemon/connector.go` связывает их с ядрами и перестраивает живое подключение при изменении настроек или профиля.
+
 ### 6A. Системный прокси
-- [ ] 6.1 🍎 установка через `networksetup` (web, secure web, socks) **для всех активных сервисов**, сохранение предыдущих значений
-- [ ] 6.2 🪟 через WinINet (реестр + `InternetSetOption`, чтобы изменения применились сразу)
-- [ ] 6.3 🐧 GNOME (`gsettings`) и KDE (`kwriteconfig`). Для остальных окружений — подсказка про переменные окружения в `beryl env`
-- [ ] 6.4 Проблема: демон работает от root, а прокси в GNOME/KDE — настройка пользователя. Решение: системный прокси выставляет пользовательский клиент (CLI/GUI) по команде демона, либо демон делает это в сессии пользователя
-- [ ] 6.5 Маркер «прокси выставлен» на диске: если после падения или перезагрузки маркер есть, при старте демона прежние настройки восстанавливаются
+- [x] 6.1 🍎 установка через `networksetup` (web, secure web, socks) **для всех активных сервисов**, сохранение предыдущих значений. Сервисы, которые не принимают прокси (некоторые VPN), пропускаются
+- [x] 6.2 🪟 через WinINet (`InternetSetOption` с `INTERNET_PER_CONNECTION_OPTION`, изменения применяются сразу). Демон работает от SYSTEM, поэтому запускает сам себя (`berylliumd sysproxy-helper`) в сессии пользователя консоли с его токеном. ⚠️ Пока не проверено на реальном Windows
+- [x] 6.3 🐧 Всё, что есть у пользователя, одновременно: `gsettings` (GNOME; GTK-приложения и Firefox читают его и на других окружениях), `kioslaverc` (KDE), переменные `http_proxy`/`https_proxy`/`all_proxy`/`no_proxy` в окружении сессии (`systemctl --user set-environment` и/или `dbus-update-activation-environment`). На Hyprland, niri, sway и других без своей настройки прокси это единственный вариант для Chromium/Electron/CLI, и он действует только на приложения, запущенные после подключения, поэтому там рекомендуется TUN. Для терминала — `beryl env`
+- [x] 6.4 Решение: демон меняет настройки **того пользователя, который вызвал `Connect`** (uid из SO_PEERCRED). Команды выполняются от его имени с его сессионной шиной. Без systemd (Artix + runit, niri из TTY) адрес D-Bus берётся из `/proc/<pid>/environ` процессов сессии
+- [x] 6.5 Маркер `<state>/sysproxy.json` пишется **до** изменения настроек. При старте демона, если маркер есть, прежние настройки восстанавливаются
 
 ### 6B. TUN
-- [ ] 6.6 Конфиг TUN-inbound sing-box: `auto_route`, `strict_route`, `auto_detect_interface`, `stack` (по умолчанию `mixed`), MTU
+- [x] 6.6 TUN-inbound sing-box: `auto_route`, `strict_route`, `route.auto_detect_interface`, `stack: mixed`, MTU 9000, адреса IPv4 и IPv6. Нужен root/Administrator, без него — понятная ошибка
 - [ ] 6.7 🍎 проверить, что `utun` поднимается от launchd-демона и маршруты удаляются при остановке
-- [ ] 6.8 🐧 проверить совместимость с NetworkManager, systemd-resolved, nftables/iptables
-- [ ] 6.9 🪟 wintun: убедиться, что драйвер доступен (входит в sing-box или поставляется рядом), протестировать на Windows 10 и 11
-- [ ] 6.10 Защита от петли: трафик самого ядра к серверу идёт мимо TUN (`auto_detect_interface` / исключения по процессу)
-- [ ] 6.11 Переключение режимов TUN ↔ системный прокси на лету без потери выбранного сервера
+- [ ] 6.8 🐧 проверить совместимость с NetworkManager, systemd-resolved, nftables/iptables, а также без systemd (runit/OpenRC + connman/iwd/dhcpcd)
+- [ ] 6.9 🪟 wintun: sing-box встраивает драйвер, протестировать на Windows 10 и 11
+- [x] 6.10 Защита от петли: `auto_detect_interface` для самого sing-box и правило `process_path → direct` для Xray, mihomo, sing-box (замеры задержки) и демона (geo-файлы, подписки)
+- [x] 6.11 Переключение TUN ↔ системный прокси ↔ локальный прокси на лету без потери сервера и ядра (`beryl mode`, `UpdateSettings(mode)`)
 
 ### 6C. DNS
-- [ ] 6.12 DNS-конфиг по умолчанию: удалённые домены резолвятся DoH через туннель, домены `.ru` / локальные — напрямую
-- [ ] 6.13 FakeIP как опция (быстрее, но ломает некоторые приложения), по умолчанию выключен
-- [ ] 6.14 Перехват DNS в TUN (`hijack-dns`), чтобы запросы не утекали мимо туннеля
-- [ ] 6.15 IPv6: либо туннелировать, либо явно блокировать, чтобы не было утечек
+- [x] 6.12 DNS по умолчанию: удалённые домены резолвятся через DoH `1.1.1.1` в туннеле, домены direct-правил (включая `.local`/`.lan`) — прямым резолвером (по умолчанию системным). Резолверы можно задать в настройках (`beryl dns`), иначе берутся из профиля
+- [x] 6.13 FakeIP как опция (только TUN), по умолчанию выключен
+- [x] 6.14 Перехват DNS в TUN (`hijack-dns`), чтобы запросы не утекали мимо туннеля
+- [x] 6.15 IPv6: по умолчанию `block` (IPv6 отклоняется, DNS отдаёт только A-записи), `tunnel` — туннелировать
 
 ### 6D. Маршрутизация
-- [ ] 6.16 Пресеты как встроенные профили маршрутизации (см. 6E): «Весь трафик через VPN» / «RU напрямую, остальное через VPN» / «Только заблокированное через VPN»
-- [ ] 6.17 Rule-sets (`geoip-ru`, `geosite-ru`, списки блокировок) в формате `.srs`, скачиваются демоном с обновлением по расписанию
-- [ ] 6.18 LAN и приватные сети всегда напрямую
-- [ ] 6.19 Пользовательские правила: домен / суффикс / IP-CIDR / процесс → proxy / direct / block
-- [ ] 6.20 Правила по приложениям (split tunneling): `process_name` / `process_path` в TUN
-- [ ] 6.21 CLI (`connect <server> [--core]`, `disconnect`, `status`, `test` уже есть с фазы 5 для режима локального прокси; остаётся `--mode` и `--auto`): `beryl connect [server|--auto] [--mode tun|proxy] [--core …]`, `beryl disconnect`, `beryl status [--watch]`, `beryl mode`, `beryl rules`
+- [x] 6.16 Пресеты как встроенные профили (см. 6E): «Proxy everything», «Russia direct» (geo от roscomvpn + `.ru/.su/.рф`), «Only blocked in Russia» (geo от runetfreedom: `ru-blocked`)
+- [x] 6.17 Вместо отдельных `.srs`: пресеты используют те же `geoip.dat`/`geosite.dat`, что и профили Happ/INCY, и тот же конвертер (6.27). Проверка обновлений раз в сутки
+- [x] 6.18 LAN и приватные сети всегда напрямую. Перекрыть это могут только пользовательские правила
+- [x] 6.19 Пользовательские правила: домен / суффикс / ключевое слово / IP-CIDR / процесс → proxy / direct / block, проверяются первыми (`beryl rules`)
+- [x] 6.20 Правила по приложениям (split tunneling): `process_name` / `process_path` (`beryl rules add process Telegram proxy`)
+- [x] 6.21 CLI: `beryl connect [server|--auto] [--sub] [--mode tun|proxy|local] [--core …]`, `beryl status [--watch]`, `beryl mode`, `beryl rules`, `beryl dns`, `beryl env`
 
 ### 6E. Профили маршрутизации Happ/INCY (правила от провайдера)
 
 Провайдеры (Remnawave, 3x-ui и др.) отдают правила в формате Happ, который понимает и INCY. Спецификации: [Happ](https://www.happ.su/main/dev-docs/routing), [INCY](https://incy.gitbook.io/docs/docs-en/routing.en), конструктор [routing.happ.su](https://routing.happ.su/en).
 
-- [ ] 6.22 Источники профиля:
+- [x] 6.22 Источники профиля:
   - заголовок `routing` в ответе подписки: либо чистый base64, либо ссылка с любой схемой (`://routing/onadd/…`);
   - строка `happ://routing/…` / `incy://routing/…` в теле подписки;
   - ручной импорт: ссылка, JSON, `https://` URL, QR, буфер обмена
-- [ ] 6.23 Декодер ссылок `{happ,incy,}://routing/{add,onadd}/<base64>`: стандартный и URL-safe base64, с паддингом и без. `onadd` — активировать сразу, `add` — активировать после загрузки geo-файлов
-- [ ] 6.24 Модель профиля и парсер JSON. Поля: `Name`, `GlobalProxy` (строка `"true"`/`"false"` или bool), `LastUpdated`, `RemoteDNSType` (DoH/DoU), `RemoteDNSDomain`, `RemoteDNSIP` (алиас `RemoteDns`), `DomesticDNSType`, `DomesticDNSDomain`, `DomesticDNSIP` (алиас `DomesticDns`), `DnsHosts`, `FakeDNS`, `DomainStrategy` (`AsIs`/`IPIfNonMatch`/`IPOnDemand`), `RouteOrder` (`block-proxy-direct` и т.п.), `DirectSites/DirectIp`, `ProxySites/ProxyIp`, `BlockSites/BlockIp`, `Geoipurl`, `Geositeurl`, `UseChunkFiles` (на десктопе игнорируется). Неизвестные поля пропускаются, неверные типы дают понятную ошибку
-- [ ] 6.25 Синтаксис правил в стиле Xray: `geosite:tag`, `geoip:tag`, `domain:`, `full:`, `regexp:`, `keyword:`, строка без префикса (подстрока), IP/CIDR, `geoip:private`. Тесты на каждый вид
-- [ ] 6.26 Загрузка `geoip.dat` / `geosite.dat` по `Geoipurl` / `Geositeurl` (идёт в обход туннеля, таймаут 3 мин). Проверка через `<file>.sha256`, если провайдер его выкладывает; иначе обновление по `LastUpdated`. Кеш в state-dir
-- [ ] 6.27 **Конвертер `.dat` → rule-set sing-box.** sing-box больше не читает `geosite.dat` и `geoip.dat`, поэтому парсим protobuf v2ray (`GeoSiteList`/`GeoIPList`) и для **используемых в профиле тегов** строим inline rule-set: Full → `domain`, RootDomain → `domain_suffix`, Plain → `domain_keyword`, Regex → `domain_regex`, атрибуты `@attr` фильтруют записи. GeoIP → `ip_cidr`. Маршрутизацией всегда управляет sing-box, поэтому правила одинаково работают для серверов на Xray и mihomo
-- [ ] 6.28 Трансляция профиля в sing-box: правила в порядке `RouteOrder`, `final` = proxy или direct по `GlobalProxy`, DNS-серверы remote (через туннель) и domestic (напрямую) с маршрутизацией DNS-запросов по тем же правилам, `DnsHosts` → `hosts`, `FakeDNS` → fakeip, `DomainStrategy` → стратегия резолва
-- [ ] 6.29 Порядок применения: пользовательские правила (6.19) → активный профиль → `final`. Встроенные пресеты (6.16) — это тоже профили, `RoutingService` работает с ними одинаково
-- [ ] 6.30 Обновление: профиль с тем же `Name` заменяется, только если `LastUpdated` новее. При каждом обновлении подписки профиль перечитывается. Настройка «Применять маршрутизацию от провайдера» (`apply_provider_routing`, по умолчанию включена). Если geo-файлы не скачались, остаётся прежний рабочий профиль, а в статусе показывается ошибка
-- [ ] 6.31 Совместимость: прогнать реальные публичные профили (например, [roscomvpn-routing](https://github.com/hydraponique/roscomvpn-routing)) через парсер, конвертер и `sing-box check`. Сохранить их как фикстуры
-- [ ] 6.32 Экспорт и шаринг профиля ссылкой `happ://routing/onadd/…` и QR (`GetShareLink`)
-- [ ] 6.33 CLI: `beryl routing ls`, `beryl routing import <uri|file>`, `beryl routing use <id>`, `beryl routing rm <id>`, `beryl routing update-geo`
+- [x] 6.23 Декодер ссылок `{happ,incy,}://routing/{add,onadd}/<base64>`: стандартный и URL-safe base64, с паддингом и без. `onadd` — активировать сразу, `add` — активировать после загрузки geo-файлов (так в INCY). Импорт с `activate=false` только добавляет профиль
+- [x] 6.24 Модель профиля и парсер JSON. Поля: `Name`, `GlobalProxy` (строка `"true"`/`"false"` или bool), `LastUpdated`, `RemoteDNSType` (DoH/DoU), `RemoteDNSDomain`, `RemoteDNSIP` (алиас `RemoteDns`), `DomesticDNSType`, `DomesticDNSDomain`, `DomesticDNSIP` (алиас `DomesticDns`), `DnsHosts`, `FakeDNS`, `DomainStrategy` (`AsIs`/`IPIfNonMatch`/`IPOnDemand`), `RouteOrder` (`block-proxy-direct` и т.п.), `DirectSites/DirectIp`, `ProxySites/ProxyIp`, `BlockSites/BlockIp`, `Geoipurl`, `Geositeurl`, `UseChunkFiles` (на десктопе игнорируется). Неизвестные поля пропускаются, неверные типы дают понятную ошибку
+- [x] 6.25 Синтаксис правил в стиле Xray: `geosite:tag`, `geoip:tag`, `domain:`, `full:`, `regexp:`, `keyword:`, строка без префикса (подстрока), IP/CIDR, `geoip:private`. Тесты на каждый вид
+- [x] 6.26 Загрузка `geoip.dat` / `geosite.dat` по `Geoipurl` / `Geositeurl` (идёт в обход туннеля, таймаут 3 мин). Проверка через `<file>.sha256` (или `.sha256sum`), если провайдер его выкладывает; иначе обновление по `LastUpdated`. Кеш в state-dir
+- [x] 6.27 **Конвертер `.dat` → rule-set sing-box.** sing-box больше не читает `geosite.dat` и `geoip.dat`, поэтому парсим protobuf v2ray (`GeoSiteList`/`GeoIPList`) и для **используемых в профиле тегов** строим rule-set (компилируется `sing-box rule-set compile` в `.srs`, кеш по хешу файла и тегу): Full → `domain`, RootDomain → `domain_suffix`, Plain → `domain_keyword`, Regex → `domain_regex`, атрибуты `@attr` фильтруют записи. GeoIP → `ip_cidr`. Маршрутизацией всегда управляет sing-box, поэтому правила одинаково работают для серверов на Xray и mihomo
+- [x] 6.28 Трансляция профиля в sing-box: правила в порядке `RouteOrder`, `final` = proxy или direct по `GlobalProxy`, DNS-серверы remote (через туннель) и domestic (напрямую) с маршрутизацией DNS-запросов по тем же правилам, `DnsHosts` → `hosts`, `FakeDNS` → fakeip, `DomainStrategy` → стратегия резолва
+- [x] 6.29 Порядок применения: пользовательские правила (6.19) → активный профиль → `final`. Встроенные пресеты (6.16) — это тоже профили, `RoutingService` работает с ними одинаково
+- [x] 6.30 Обновление: профиль с тем же `Name` заменяется, только если `LastUpdated` новее. При каждом обновлении подписки профиль перечитывается. Настройка «Применять маршрутизацию от провайдера» (`apply_provider_routing`, по умолчанию включена). Если geo-файлы не скачались, остаётся прежний рабочий профиль, а в статусе показывается ошибка
+- [x] 6.31 Совместимость: прогнать реальные публичные профили (например, [roscomvpn-routing](https://github.com/hydraponique/roscomvpn-routing)) через парсер, конвертер и `sing-box check`. Сохранить их как фикстуры (`internal/routing/testdata/roscomvpn`; все 6 профилей и пресеты проходят `sing-box check` на настоящих geo-файлах без предупреждений)
+- [x] 6.32 Экспорт и шаринг профиля ссылкой `happ://routing/onadd/…` и QR (`GetShareLink`)
+- [x] 6.33 CLI: `beryl routing ls`, `beryl routing import <uri|file|url|->`, `beryl routing use <id>`, `beryl routing rm <id>`, `beryl routing update-geo`, `beryl routing share [--qr]`
 
 **Готово, когда:** через CLI работают оба режима, нет утечек DNS и IPv6 (проверка на ipleak/dnsleaktest), RU-сайты идут напрямую.
 
@@ -315,11 +317,13 @@
 - [ ] 10.9 🐧 Нативные пакеты через `nfpm` (из goreleaser) с одной раскладкой файлов для всех форматов:
   - `/usr/bin/{berylliumd,beryl,beryllium}`, ядра в `/usr/lib/beryllium/cores/`
   - `/usr/lib/systemd/system/berylliumd.service`, группа через `/usr/lib/sysusers.d/beryllium.conf`
+  - **без зависимости от systemd**: сервисы для OpenRC, runit, dinit и s6 лежат в `packaging/linux/`; на Artix — отдельными пакетами `beryllium-{openrc,runit,dinit,s6}`, как принято в дистрибутиве. `sudo berylliumd install` сам определяет init по PID 1 (runit, dinit и s6 — свои установщики, остальное через kardianos)
   - `.desktop`-файл и иконки в `/usr/share/`, автодополнение для bash/zsh/fish
   - зависимости: `webkit2gtk-4.1`, `gtk3`, `libayatana-appindicator`
 - [ ] 10.9.1 🐧 Arch: `.pkg.tar.zst` в каждом релизе (`makepkg` в контейнере `archlinux` в CI), установка через `sudo pacman -U`
 - [ ] 10.9.2 🐧 Debian/Ubuntu `.deb` и Fedora/openSUSE `.rpm` из тех же файлов
-- [ ] 10.9.3 🐧 Скрипты пакета: post-install — `systemd-sysusers`, `systemctl daemon-reload`, подсказка `usermod -aG beryllium $USER`; pre-remove — остановить службу и вернуть системный прокси
+- [ ] 10.9.3 🐧 Скрипты пакета: post-install — группа (`systemd-sysusers`, а без него `groupadd -r beryllium`), перезагрузка конфигурации init-системы, подсказка `usermod -aG beryllium $USER`; pre-remove — остановить службу и вернуть системный прокси
+- [ ] 10.9.5 🐧 Artix: пакеты для OpenRC/runit/dinit/s6 и проверка на VM с runit + niri и OpenRC + Hyprland (без systemd, elogind или seatd)
 - [ ] 10.9.4 🐧 AUR: `beryllium-bin` (готовые бинарники) и `beryllium-git` (сборка из исходников); `.install`-хук создаёт группу `beryllium` и включает службу
 - [ ] 10.10 Пакет только с CLI и TUI (без GUI) для всех ОС: архив + `beryllium-cli` в AUR
 - [ ] 10.11 Полное удаление: служба, файлы, группа, маркеры прокси, маршруты; на каждой ОС проверено вручную

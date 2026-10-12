@@ -1,0 +1,5 @@
+#!/bin/sh
+# Beryllium daemon for runit: /etc/runit/sv/berylliumd/run (Artix) or
+# /etc/sv/berylliumd/run (Void).
+exec 2>&1
+exec /usr/bin/berylliumd

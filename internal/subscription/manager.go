@@ -77,6 +77,10 @@ type Manager struct {
 	log     *slog.Logger
 	now     func() time.Time
 
+	// OnUpdate is called (outside the lock) after a subscription was added
+	// or refreshed successfully, e.g. to apply its routing profile.
+	OnUpdate func(Record)
+
 	mu    sync.Mutex
 	state State
 	// refreshing serializes refreshes per subscription.
@@ -147,7 +151,11 @@ func (m *Manager) Add(ctx context.Context, rawURL, name string) (Record, error) 
 		rec.Name = hostOf(u)
 	}
 	m.log.Info("subscription added", "id", rec.ID, "servers", len(rec.Servers), "skipped", len(parsed.Warnings))
-	return m.insert(rec)
+	out, err := m.insert(rec)
+	if err == nil && m.OnUpdate != nil {
+		m.OnUpdate(out)
+	}
+	return out, err
 }
 
 // Import stores a standalone config or link as a local subscription.
@@ -253,7 +261,11 @@ func (m *Manager) Refresh(ctx context.Context, id string) (Record, error) {
 	}
 	m.apply(r, res.Meta, parsed)
 	m.log.Info("subscription refreshed", "id", id, "servers", len(r.Servers), "skipped", len(parsed.Warnings))
-	return *r, m.save()
+	out, err := *r, m.save()
+	if err == nil && m.OnUpdate != nil {
+		go m.OnUpdate(out) // m.mu is held here
+	}
+	return out, err
 }
 
 // RefreshAll refreshes every remote subscription and joins the errors.

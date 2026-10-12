@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Phases 0–5 (scaffolding, proto API, daemon skeleton, minimal CLI, subscriptions, core manager) are done; everything else is design agreed with the user before implementation. `ROADMAP.md` is the step-by-step plan from empty repo to 1.0, with numbered steps (e.g. `7.10`): follow its order, tick `[x]` when a step is done, and reference step numbers in commits. 
+Phases 0–6 (scaffolding, proto API, daemon skeleton, minimal CLI, subscriptions, core manager, modes/DNS/routing) are done, except 6.7–6.9 (TUN verified by hand on each OS as root); everything else is design agreed with the user before implementation. `ROADMAP.md` is the step-by-step plan from empty repo to 1.0, with numbered steps (e.g. `7.10`): follow its order, tick `[x]` when a step is done, and reference step numbers in commits. 
 
 ## Commands
 
@@ -78,7 +78,7 @@ Beryllium is a cross-platform desktop proxy/VPN client for Arch Linux, macOS and
 - After changing a translator, run `go test ./internal/core`. `TestConfigsPassCoreCheck` feeds every config in `corpus` through the real core's checker, and `TestRuntimeEndToEnd` proxies real traffic through loopback servers run by the cores themselves
 - `Runtime` restarts crashed cores with backoff (default 5 per 2 min, then `failed`). Generated configs hold credentials: `<state>/run/*.json|yaml`, mode 0600
 - Latency (`core.Pinger`, `beryl ping`): HTTP runs one temporary sing-box with a mixed inbound per server and does its own GET through each (fresh connection; default `http://www.gstatic.com/generate_204`). Don't switch to the Clash API `/proxies/<tag>/delay`: it adds ~1s of artifact on some outbounds. Only HTTP results feed `Server.latency`; TCP/ICMP results only prove the host is reachable. `TestPingHTTPBatch` fails if loopback latency exceeds 500ms
-- `MODE_LOCAL_PROXY` (local proxy only, nothing changed on the system) is the only mode implemented. TUN and system proxy come in phase 6
+- Modes: `MODE_LOCAL_PROXY` (default; nothing on the system changes), `MODE_SYSTEM_PROXY`, `MODE_TUN` (needs root/Administrator: `core.ErrTUNPrivileges`). In TUN, `process_path → direct` for all cores and the daemon prevents loops; keep it when adding processes that dial servers
 
 ## Daemon internals
 
@@ -91,6 +91,14 @@ Beryllium is a cross-platform desktop proxy/VPN client for Arch Linux, macOS and
 ## API (proto)
 
 `proto/beryllium/v1/*.proto` is the single contract for the daemon and all three frontends. buf STANDARD lint applies: every RPC has its own `<Rpc>Request`/`<Rpc>Response`, and enum values are prefixed with the enum name and start with `_UNSPECIFIED`. Errors are gRPC status codes with `ErrorDetail` (an `ErrorReason`) in the details. Credentials and full subscription URLs never cross the API, except through `GetShareLink` (for copy/QR), which frontends call only on explicit user action and must never log or cache. `Server` is a public view, and `Subscription` has only `url_masked`.
+
+## Modes, routing, system proxy (phase 6)
+
+- `internal/daemon/connector.go` owns the connection lifecycle: mode, routing plan, OS proxy, auto-select (lowest cached HTTP latency, measured first if none). Settings/routing changes reconfigure a live connection synchronously (`Runtime.Reconfigure`), so `UpdateSettings` returns once the change is live
+- Settings are stored as protojson of `berylliumv1.Settings` (`settings.json`); `UpdateSettings` honors the field mask (`routing.rules`, `dns.ipv6`, ...)
+- `internal/routing`: Happ/INCY profiles (`Decode`, `ParseJSON`, `Link`), Xray rule syntax, a protowire reader for `geosite.dat`/`geoip.dat`, `GeoCache` (INCY algorithm: `<url>.sha256`, else `LastUpdated`; downloads bypass the tunnel) and `Build` → `Plan` (route rules, rule-sets compiled by `sing-box rule-set compile`, DNS). Rule order: IPv6 reject → user rules → LAN direct → profile groups in `RouteOrder` → final. Builtin presets are ordinary profiles (`presets.go`)
+- `internal/sysproxy`: Capture → persist marker (`sysproxy.json`) → Apply; Restore on disconnect, mode change and next start. macOS `networksetup` (system-wide); Linux changes the **calling user's** settings (GNOME, KDE and the session environment for Hyprland/niri/sway), running commands as that user with their session bus; Windows re-runs `berylliumd sysproxy-helper` in the console user's session (SYSTEM can't change per-user WinINet). Tests swap the package-level `run`/`lookPath`; never touch the real system proxy in tests
+- **Linux must stay init- and desktop-agnostic** (Arch + Hyprland, Artix + runit/OpenRC/dinit/s6 + niri, GNOME/KDE): no hard systemd dependency in the daemon; `berylliumd install` detects PID 1 (`cmd/berylliumd/initsys_linux.go`); service files for every init live in `packaging/linux/`
 
 ## Routing
 

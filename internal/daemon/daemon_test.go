@@ -17,9 +17,7 @@ import (
 	"github.com/vvaeli/beryllium/internal/paths"
 	"github.com/vvaeli/beryllium/internal/version"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/status"
 )
 
 func testPaths(t *testing.T) paths.Paths {
@@ -77,9 +75,9 @@ func TestDaemonLifecycle(t *testing.T) {
 		t.Fatalf("Health = %v, %v", h, err)
 	}
 
-	_, err = berylliumv1.NewSettingsServiceClient(conn).GetSettings(ctx, &berylliumv1.GetSettingsRequest{})
-	if status.Code(err) != codes.Unimplemented {
-		t.Errorf("GetSettings err = %v, want Unimplemented", err)
+	set, err := berylliumv1.NewSettingsServiceClient(conn).GetSettings(ctx, &berylliumv1.GetSettingsRequest{})
+	if err != nil || set.GetSettings().GetMode() != berylliumv1.Mode_MODE_LOCAL_PROXY || !set.GetSettings().GetRouting().GetApplyProviderRouting() {
+		t.Errorf("GetSettings = %v, %v; want defaults", set, err)
 	}
 
 	if _, err := client.Shutdown(ctx, &berylliumv1.ShutdownRequest{}); err != nil {

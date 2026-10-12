@@ -1,0 +1,7 @@
+# Beryllium daemon for dinit: /etc/dinit.d/berylliumd
+# The daemon waits for the network itself, so no dependencies.
+type = process
+command = /usr/bin/berylliumd
+restart = true
+smooth-recovery = true
+stop-timeout = 20

@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 )
@@ -97,3 +98,13 @@ func (b *Binaries) Version(k Kind) string {
 
 // ErrNotInstalled is returned when a required core binary is missing.
 var ErrNotInstalled = errors.New("core is not installed")
+
+// CompileRuleSet compiles a source rule-set (JSON) into a binary .srs with
+// sing-box; it plugs into routing.Input.Compile.
+func (b *Binaries) CompileRuleSet(src, dst string) error {
+	out, err := exec.Command(b.Path(SingBox), "rule-set", "compile", "--output", dst, src).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("sing-box rule-set compile: %w: %s", err, lastLine(string(out)))
+	}
+	return nil
+}

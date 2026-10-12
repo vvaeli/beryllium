@@ -1,0 +1,4 @@
+#!/bin/sh
+# Beryllium daemon for s6-rc: /etc/s6/sv/berylliumd/
+exec 2>&1
+exec /usr/bin/berylliumd

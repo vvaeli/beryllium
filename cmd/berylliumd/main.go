@@ -3,6 +3,9 @@
 //	berylliumd [flags]                    run (in foreground or under the service manager)
 //	berylliumd [flags] install            register the system service; the invoking user gets IPC access
 //	berylliumd uninstall|start|stop|restart|status
+//
+// Service managers: systemd, OpenRC, SysV, launchd and Windows services via
+// kardianos/service; runit, dinit and s6 natively (initsys_linux.go).
 package main
 
 import (
@@ -20,10 +23,16 @@ import (
 	"github.com/vvaeli/beryllium/internal/daemon"
 	"github.com/vvaeli/beryllium/internal/logging"
 	"github.com/vvaeli/beryllium/internal/paths"
+	"github.com/vvaeli/beryllium/internal/sysproxy"
 	"github.com/vvaeli/beryllium/internal/version"
 )
 
 func main() {
+	// Windows: the daemon (SYSTEM) re-runs itself in the user's session to
+	// change their proxy settings.
+	if len(os.Args) > 1 && os.Args[1] == sysproxy.HelperArg {
+		os.Exit(sysproxy.HelperMain(os.Args[2:], os.Stdin, os.Stdout))
+	}
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, "berylliumd:", err)
 		os.Exit(1)
@@ -72,6 +81,9 @@ func run() error {
 	}
 
 	if cmd := flag.Arg(0); cmd != "" {
+		if in := nativeInit(); in != nil {
+			return controlNative(in, cmd, p, svcArgs)
+		}
 		return control(svc, cmd, p)
 	}
 
@@ -155,6 +167,35 @@ func control(svc service.Service, cmd string, p paths.Paths) error {
 	default:
 		return fmt.Errorf("unknown command %q (want install|uninstall|start|stop|restart|status)", cmd)
 	}
+}
+
+// controlNative handles runit, dinit and s6 (see initsys_linux.go).
+func controlNative(in initSystem, cmd string, p paths.Paths, args []string) error {
+	if cmd != "status" {
+		if err := requireAdmin(); err != nil {
+			return err
+		}
+	}
+	switch cmd {
+	case "install":
+		if err := grantInstallingUser(p); err != nil {
+			return fmt.Errorf("record IPC access: %w", err)
+		}
+		exe, err := os.Executable()
+		if err != nil {
+			return err
+		}
+		if err := in.install(exe, args); err != nil {
+			return err
+		}
+		fmt.Printf("%s service installed\n", in.name())
+		return nil
+	case "uninstall":
+		return in.uninstall()
+	case "start", "stop", "restart", "status":
+		return in.control(cmd)
+	}
+	return fmt.Errorf("unknown command %q (want install|uninstall|start|stop|restart|status)", cmd)
 }
 
 // grantInstallingUser records the user who ran the install (via sudo/UAC)

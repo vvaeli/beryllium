@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"net/netip"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +13,8 @@ import (
 
 	"github.com/vvaeli/beryllium/internal/link"
 	"github.com/vvaeli/beryllium/internal/model"
+	"github.com/vvaeli/beryllium/internal/routing"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 // testBinaries returns the cores fetched by `go -C tools run ./fetchcores`,
@@ -165,4 +168,85 @@ func TestConfigsPassCoreCheck(t *testing.T) {
 			t.Fatalf("%v\n%s", err, out)
 		}
 	})
+}
+
+// TestFrontWithRouting checks TUN + a full routing plan (geo rule-sets
+// compiled by sing-box, DNS, hosts, FakeIP) with sing-box itself.
+func TestFrontWithRouting(t *testing.T) {
+	bins := testBinaries(t)
+	dir := t.TempDir()
+	site := filepath.Join(dir, "geosite.dat")
+	ip := filepath.Join(dir, "geoip.dat")
+	os.WriteFile(site, testGeoSite(map[string][]string{"category-ru": {"yandex.ru", "vk.com"}}), 0o600)
+	os.WriteFile(ip, testGeoIP(map[string][]string{"direct": {"5.8.0.0/16", "2a00:1450::/32"}}), 0o600)
+
+	raw, err := os.ReadFile("../routing/testdata/roscomvpn/happ-default.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := routing.ParseJSON(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.DomainStrategy = "IPOnDemand"
+	for _, tun := range []bool{false, true} {
+		in := routing.Input{
+			Profile: p, GeoSite: site, GeoIP: ip, RuleSetDir: filepath.Join(dir, "rs"), Compile: bins.CompileRuleSet, TUN: tun,
+			DNS:   routing.DNS{FakeIP: true},
+			Rules: []routing.UserRule{{Match: routing.MatchProcessName, Value: "Telegram", Action: routing.ActionProxy}},
+		}
+		plan, err := routing.Build(in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(plan.RuleSets) != 2 {
+			t.Fatalf("rule sets: %v (warnings %v)", plan.RuleSets, plan.Warnings)
+		}
+		f := singBoxFront{MixedPort: 2080, APIPort: 2081, APISecret: "s", LogLevel: "warn", BackendPort: 2082, Routing: plan}
+		if tun {
+			f.TUN = &TUN{}
+			f.DirectProcesses = []string{bins.Path(Xray), bins.Path(SingBox)}
+		}
+		cfg, err := singBoxConfig(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		file := filepath.Join(dir, "config.json")
+		os.WriteFile(file, cfg, 0o600)
+		if out, err := exec.Command(bins.Path(SingBox), "check", "-c", file).CombinedOutput(); err != nil {
+			t.Fatalf("tun=%v: %v\n%s\nconfig:\n%s", tun, err, out, cfg)
+		}
+		if tun != strings.Contains(string(cfg), `"hijack-dns"`) {
+			t.Errorf("tun=%v: hijack-dns presence mismatch", tun)
+		}
+	}
+}
+
+func testGeoSite(tags map[string][]string) []byte {
+	var list []byte
+	for tag, domains := range tags {
+		site := protowire.AppendString(protowire.AppendTag(nil, 1, protowire.BytesType), tag)
+		for _, d := range domains {
+			dom := protowire.AppendVarint(protowire.AppendTag(nil, 1, protowire.VarintType), 2)
+			dom = protowire.AppendString(protowire.AppendTag(dom, 2, protowire.BytesType), d)
+			site = protowire.AppendBytes(protowire.AppendTag(site, 2, protowire.BytesType), dom)
+		}
+		list = protowire.AppendBytes(protowire.AppendTag(list, 1, protowire.BytesType), site)
+	}
+	return list
+}
+
+func testGeoIP(tags map[string][]string) []byte {
+	var list []byte
+	for tag, cidrs := range tags {
+		geo := protowire.AppendString(protowire.AppendTag(nil, 1, protowire.BytesType), tag)
+		for _, c := range cidrs {
+			p := netip.MustParsePrefix(c)
+			cidr := protowire.AppendBytes(protowire.AppendTag(nil, 1, protowire.BytesType), p.Addr().AsSlice())
+			cidr = protowire.AppendVarint(protowire.AppendTag(cidr, 2, protowire.VarintType), uint64(p.Bits()))
+			geo = protowire.AppendBytes(protowire.AppendTag(geo, 2, protowire.BytesType), cidr)
+		}
+		list = protowire.AppendBytes(protowire.AppendTag(list, 1, protowire.BytesType), geo)
+	}
+	return list
 }

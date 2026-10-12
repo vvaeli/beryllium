@@ -77,7 +77,8 @@ func TestSubscriptionWorkflow(t *testing.T) {
 	if out = mustRun("sub", "qr", subs[0].ID[:4], "--link"); strings.TrimSpace(out) != subURL {
 		t.Fatalf("sub qr --link = %q", out)
 	}
-	if code, _, errOut := run("share", "e", "--socket", sock); code != 1 || !strings.Contains(errOut, "matches several servers") {
+	// "s" is not a hex digit, so it can't match a server ID prefix.
+	if code, _, errOut := run("share", "s", "--socket", sock); code != 1 || !strings.Contains(errOut, "matches several servers") {
 		t.Fatalf("ambiguous share: exit %d %s", code, errOut)
 	}
 	if out = mustRun("sub", "qr", "Test VPN"); !strings.Contains(out, "▀") {
