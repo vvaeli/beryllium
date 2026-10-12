@@ -79,6 +79,9 @@ type Options struct {
 	WorkDir   string
 	Log       *slog.Logger
 	MixedPort int
+	// CoreLogLevel is debug, info, warn (default) or error; core output is
+	// forwarded to Log.
+	CoreLogLevel string
 	// Restart policy for crashed cores.
 	MaxRestarts   int
 	RestartWindow time.Duration
@@ -121,6 +124,11 @@ func New(o Options) *Runtime {
 	}
 	if o.MixedPort == 0 {
 		o.MixedPort = DefaultMixedPort
+	}
+	switch o.CoreLogLevel {
+	case "debug", "info", "warn", "error":
+	default:
+		o.CoreLogLevel = "warn"
 	}
 	if o.MaxRestarts == 0 {
 		o.MaxRestarts = 5
@@ -255,7 +263,8 @@ func (r *Runtime) prepare(s *session) error {
 	_, _ = rand.Read(secret)
 	s.apiSecret = hex.EncodeToString(secret)
 
-	front := singBoxFront{MixedPort: s.mixedPort, APIPort: s.apiPort, APISecret: s.apiSecret, LogLevel: "warn",
+	level := r.opts.CoreLogLevel
+	front := singBoxFront{MixedPort: s.mixedPort, APIPort: s.apiPort, APISecret: s.apiSecret, LogLevel: level,
 		TUN: s.opts.TUN, Routing: s.opts.Routing}
 	if s.opts.TUN != nil {
 		front.DirectProcesses = r.directProcesses()
@@ -270,9 +279,9 @@ func (r *Runtime) prepare(s *session) error {
 		front.BackendPort = s.backend
 		var cfg []byte
 		if s.choice.Kind == Xray {
-			cfg, err = xrayConfig(&s.srv, s.backend, "warning")
+			cfg, err = xrayConfig(&s.srv, s.backend, xrayLevel(level))
 		} else {
-			cfg, err = mihomoConfig(&s.srv, s.backend, "warning")
+			cfg, err = mihomoConfig(&s.srv, s.backend, xrayLevel(level))
 		}
 		if err != nil {
 			return err
@@ -479,6 +488,14 @@ func (r *Runtime) URLTest(ctx context.Context, target string) (time.Duration, er
 		return elapsed(start), nil
 	}
 	return 0, lastErr
+}
+
+// xrayLevel maps sing-box log levels to Xray's and mihomo's names.
+func xrayLevel(l string) string {
+	if l == "warn" {
+		return "warning"
+	}
+	return l
 }
 
 // directProcesses must bypass TUN: the cores (backends dial the server

@@ -102,9 +102,11 @@ func singBoxConfig(f singBoxFront) ([]byte, error) {
 	if f.Routing != nil {
 		rules = append(rules, f.Routing.PreRules...)
 	}
-	rules = append(rules, map[string]any{"action": "sniff"})
 	route := map[string]any{"final": routing.TagProxy, "default_domain_resolver": "local"}
 	if t := f.TUN; t != nil {
+		// TUN sees bare IPs; sniffing recovers domains for routing and DNS.
+		// The mixed inbound already gets domains from HTTP CONNECT/SOCKS5.
+		rules = append(rules, map[string]any{"action": "sniff"})
 		inbounds = append(inbounds, map[string]any{
 			"type": "tun", "tag": "tun-in", "address": tunAddresses,
 			"mtu": cmp.Or(t.MTU, 9000), "stack": cmp.Or(t.Stack, "mixed"),

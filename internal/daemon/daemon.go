@@ -42,6 +42,9 @@ type Options struct {
 	Log   *slog.Logger
 	// UserAgent for subscription downloads; empty uses DefaultUserAgent.
 	UserAgent string
+	// CoreLogLevel for sing-box/Xray/mihomo (debug|info|warn|error);
+	// empty means warn.
+	CoreLogLevel string
 }
 
 // Daemon is a running berylliumd instance.
@@ -49,6 +52,7 @@ type Daemon struct {
 	paths     paths.Paths
 	log       *slog.Logger
 	userAgent string
+	coreLevel string
 	started   time.Time
 	subs      *subscription.Manager
 	rt        *core.Runtime
@@ -68,7 +72,7 @@ func New(o Options) *Daemon {
 	if ua == "" {
 		ua = DefaultUserAgent
 	}
-	return &Daemon{paths: o.Paths, log: o.Log, userAgent: ua, shutdownCh: make(chan struct{})}
+	return &Daemon{paths: o.Paths, log: o.Log, userAgent: ua, coreLevel: o.CoreLogLevel, shutdownCh: make(chan struct{})}
 }
 
 // Run serves the API until ctx is canceled or a Shutdown RPC arrives, then
@@ -96,7 +100,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 			d.log.Warn("core not installed", "core", k, "dir", d.paths.CoresDir)
 		}
 	}
-	d.rt = core.New(core.Options{Binaries: bins, WorkDir: d.paths.StateDir, Log: d.log})
+	d.rt = core.New(core.Options{Binaries: bins, WorkDir: d.paths.StateDir, Log: d.log, CoreLogLevel: d.coreLevel})
 	d.pinger = &core.Pinger{Binaries: bins, WorkDir: d.paths.StateDir}
 	d.latency = newLatencyCache()
 

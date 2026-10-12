@@ -57,8 +57,9 @@ func startDaemon(t *testing.T) string {
 		}
 	})
 	d := daemon.New(daemon.Options{
-		Paths: paths.Paths{StateDir: filepath.Join(dir, "state"), LogDir: dir, Socket: sock, CoresDir: repoCores()},
-		Log:   slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
+		Paths:        paths.Paths{StateDir: filepath.Join(dir, "state"), LogDir: dir, Socket: sock, CoresDir: repoCores()},
+		Log:          slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
+		CoreLogLevel: "debug",
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)

@@ -49,6 +49,7 @@ func run() error {
 	foreground := flag.Bool("foreground", false, "also log to stderr")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	userAgent := flag.String("user-agent", "", "User-Agent for subscription downloads (default: Happ-compatible)")
+	coreLogLevel := flag.String("core-log-level", "warn", "log level of sing-box, Xray and mihomo: debug|info|warn|error")
 	flag.Parse()
 
 	if *showVersion {
@@ -74,7 +75,7 @@ func run() error {
 	var svcArgs []string
 	flag.Visit(func(f *flag.Flag) { svcArgs = append(svcArgs, "-"+f.Name+"="+f.Value.String()) })
 
-	prog := &program{paths: p, userAgent: *userAgent}
+	prog := &program{paths: p, userAgent: *userAgent, coreLogLevel: *coreLogLevel}
 	svc, err := service.New(prog, serviceConfig(svcArgs))
 	if err != nil {
 		return err
@@ -223,18 +224,19 @@ func grantInstallingUser(p paths.Paths) error {
 
 // program adapts Daemon to the service manager.
 type program struct {
-	paths     paths.Paths
-	userAgent string
-	log       *slog.Logger
-	cancel    context.CancelFunc
-	done      chan error
+	paths        paths.Paths
+	userAgent    string
+	coreLogLevel string
+	log          *slog.Logger
+	cancel       context.CancelFunc
+	done         chan error
 }
 
 func (p *program) Start(service.Service) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	p.cancel = cancel
 	p.done = make(chan error, 1)
-	d := daemon.New(daemon.Options{Paths: p.paths, Log: p.log, UserAgent: p.userAgent})
+	d := daemon.New(daemon.Options{Paths: p.paths, Log: p.log, UserAgent: p.userAgent, CoreLogLevel: p.coreLogLevel})
 	go func() {
 		err := d.Run(ctx)
 		if ctx.Err() != nil { // stopped by the service manager
