@@ -16,6 +16,7 @@ Phases 0–7 (scaffolding, proto API, daemon skeleton, minimal CLI, subscription
 - `just gen` formats protos and regenerates `gen/go` (committed; CI fails if it is stale). `just breaking` checks proto changes against `main`
 - buf, protoc-gen-go and protoc-gen-go-grpc are tool deps in the separate `tools/go.mod` module and run via `go tool -modfile=tools/go.mod <tool>`. Don't install them globally, and don't add tool deps to the root `go.mod`
 - `just fetch-cores` (`go -C tools run ./fetchcores`) downloads the cores pinned in `cores/versions.json` into `cores/bin/<goos>-<goarch>/` with SHA-256 checks. `just bump-cores` re-pins to the latest releases. Tests in `internal/core` and `internal/cli` that need real cores skip when they're missing, so fetch cores locally to run them
+- Releases: pushing a `v*` tag runs `.github/workflows/release.yml`. It builds `scripts/release-build.sh` archives (daemon, CLI, pinned cores, `INSTALL.txt`) for linux/darwin/windows × amd64/arm64 and publishes a GitHub release with `SHA256SUMS` and generated notes; tags with `-` become pre-releases. macOS builds on a macOS runner with cgo; the rest use `CGO_ENABLED=0`. `just release-build` builds the archive for the current platform
 - `just gui-dev` is a placeholder until ROADMAP 9.1
 - Never run `mihomo` without `-d <dir>`: it silently creates `~/.config/mihomo`
 

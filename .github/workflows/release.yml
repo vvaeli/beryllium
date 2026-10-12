@@ -1,0 +1,68 @@
+name: Release
+
+# A pushed tag v* builds archives for every platform (daemon, CLI and the
+# pinned cores) and publishes a GitHub release with SHA256SUMS. Tags with a
+# suffix (v0.2.0-rc.1) become pre-releases. ROADMAP 10.12.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { goos: linux, goarch: amd64, runner: ubuntu-latest }
+          - { goos: linux, goarch: arm64, runner: ubuntu-latest }
+          - { goos: windows, goarch: amd64, runner: ubuntu-latest }
+          - { goos: windows, goarch: arm64, runner: ubuntu-latest }
+          # cgo (IOKit sleep/wake) needs the macOS SDK.
+          - { goos: darwin, goarch: arm64, runner: macos-latest }
+          - { goos: darwin, goarch: amd64, runner: macos-latest }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - run: go -C tools run ./fetchcores -platform ${{ matrix.goos }}-${{ matrix.goarch }}
+      - name: Build archive
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          VERSION: ${{ github.ref_name }}
+        run: scripts/release-build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*.*
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          flags=()
+          [[ "$TAG" == *-* ]] && flags+=(--prerelease)
+          gh release create "$TAG" dist/* --title "Beryllium $TAG" --generate-notes --verify-tag "${flags[@]}"

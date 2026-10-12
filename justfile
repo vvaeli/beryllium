@@ -67,6 +67,10 @@ linux_arch := `go env GOARCH`
 fetch-linux-cores:
     go -C tools run ./fetchcores -platform linux-{{linux_arch}}
 
+# Release archive for this platform into dist/ (CI builds all of them on a v* tag)
+release-build: fetch-cores
+    scripts/release-build.sh
+
 # Update cores/versions.json to the latest releases
 bump-cores:
     go -C tools run ./fetchcores -bump
