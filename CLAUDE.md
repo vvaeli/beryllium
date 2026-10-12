@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Phases 0–3 (scaffolding, proto API, daemon skeleton, minimal CLI) are done; everything else is design agreed with the user before implementation. `ROADMAP.md` is the step-by-step plan from empty repo to 1.0, with numbered steps (e.g. `7.10`): follow its order, tick `[x]` when a step is done, and reference step numbers in commits. 
+Phases 0–4 (scaffolding, proto API, daemon skeleton, minimal CLI, subscriptions) are done; everything else is design agreed with the user before implementation. `ROADMAP.md` is the step-by-step plan from empty repo to 1.0, with numbered steps (e.g. `7.10`): follow its order, tick `[x]` when a step is done, and reference step numbers in commits. 
 
 ## Commands
 
@@ -60,6 +60,14 @@ Beryllium is a cross-platform desktop proxy/VPN client for Arch Linux, macOS and
 - `internal/client`: one `Client` with a stub per service. `Client.Explain(err)` turns Unavailable, PermissionDenied and Unimplemented into `*client.Error{Msg, Hint}` by probing the socket directly. Every frontend should pass RPC errors through it
 - `internal/cli`: cobra commands on an `app` with global `--socket` (env `BERYLLIUM_SOCKET`), `--json` and `--timeout`. `app.call` wraps dial + timeout + Explain. Commands support `--json`. `cli.Run(args, out, errOut)` is the test entry point; tests start a real daemon on a temp socket
 - For local dev: `just run-daemon`, then `BERYLLIUM_SOCKET=.dev/d.sock go run ./cmd/beryl …`
+
+## Subscriptions (phase 4)
+
+- `internal/model.Server` is the core-agnostic server model, including credentials. Parsers produce it and core translators (phase 5) consume it. `Key()` excludes the display name, so server IDs (`sha256(subID+key)`) survive refreshes
+- `internal/link`: share-link parse/encode for every protocol, plus wg-quick `.conf` and Amnezia `vpn://` (qCompress+zlib JSON). Links are split by hand (`splitURL`), not with `net/url`, because of Hysteria2 multi-port hosts and `+` in base64 keys. Invariant, fuzzed by `FuzzParse`: anything that parses must survive `Parse(Encode(x))`. Parse errors never echo the link
+- `internal/subscription`: `ParseBody` detects base64/plain link lists, Clash YAML, sing-box JSON and Xray JSON (single or array). Routing lines (`happ://routing/...`) are collected, not treated as servers. `Fetcher` never puts the URL into errors and wraps failures in `ErrFetch`. `Manager` keeps the last good servers when a refresh fails and runs auto-update (user interval > `profile-update-interval` header > 12h)
+- gRPC mapping (`internal/daemon/subscriptions.go`): download failures map to `FailedPrecondition`, never `Unavailable`, which clients read as "daemon unreachable"
+- Default subscription User-Agent is Happ-compatible (`daemon.DefaultUserAgent`), so panels send Happ extras such as the `routing` header. Override with `berylliumd -user-agent`
 
 ## Daemon internals
 

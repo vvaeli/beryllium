@@ -43,10 +43,6 @@ func (s *daemonService) Shutdown(context.Context, *berylliumv1.ShutdownRequest) 
 // Services below are implemented in later phases (ROADMAP 4–7) and return
 // codes.Unimplemented until then.
 
-type subscriptionService struct {
-	berylliumv1.UnimplementedSubscriptionServiceServer
-}
-
 type connectionService struct {
 	berylliumv1.UnimplementedConnectionServiceServer
 }

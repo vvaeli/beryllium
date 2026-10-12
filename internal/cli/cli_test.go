@@ -32,8 +32,10 @@ func startDaemon(t *testing.T) string {
 	if runtime.GOOS == "windows" {
 		sock = fmt.Sprintf(`\\.\pipe\beryllium-cli-test-%d`, time.Now().UnixNano())
 	}
-	d := daemon.New(paths.Paths{StateDir: filepath.Join(dir, "state"), LogDir: dir, Socket: sock},
-		slog.New(slog.NewTextHandler(io.Discard, nil)))
+	d := daemon.New(daemon.Options{
+		Paths: paths.Paths{StateDir: filepath.Join(dir, "state"), LogDir: dir, Socket: sock},
+		Log:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- d.Run(ctx) }()

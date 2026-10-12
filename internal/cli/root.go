@@ -14,6 +14,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/vvaeli/beryllium/internal/client"
 	"github.com/vvaeli/beryllium/internal/paths"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 // SocketEnv overrides the default daemon address.
@@ -24,7 +26,13 @@ type app struct {
 	json    bool
 	timeout time.Duration
 	out     io.Writer
+	// timeoutSet is true when --timeout was given explicitly.
+	timeoutSet bool
 }
+
+// slowTimeout applies to commands that download subscriptions (with
+// retries) unless --timeout is given.
+const slowTimeout = 2 * time.Minute
 
 // Execute runs beryl with os.Args and returns the process exit code.
 func Execute() int {
@@ -59,13 +67,16 @@ func newRoot(out io.Writer) *cobra.Command {
 		Short:         "Beryllium proxy/VPN client",
 		SilenceUsage:  true,
 		SilenceErrors: true,
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+			a.timeoutSet = cmd.Flags().Changed("timeout")
+		},
 	}
 	f := root.PersistentFlags()
 	f.StringVar(&a.socket, "socket", socket, "daemon socket or pipe (env "+SocketEnv+")")
 	f.BoolVar(&a.json, "json", false, "machine-readable JSON output")
 	f.DurationVar(&a.timeout, "timeout", 10*time.Second, "timeout for daemon requests")
 
-	root.AddCommand(a.versionCmd())
+	root.AddCommand(a.versionCmd(), a.subCmd(), a.serversCmd(), a.importCmd(), a.shareCmd())
 	return root
 }
 
@@ -79,6 +90,36 @@ func (a *app) call(ctx context.Context, fn func(context.Context, *client.Client)
 	ctx, cancel := context.WithTimeout(ctx, a.timeout)
 	defer cancel()
 	return c.Explain(fn(ctx, c))
+}
+
+// slowCall is call with a longer default timeout for network operations.
+func (a *app) slowCall(ctx context.Context, fn func(context.Context, *client.Client) error) error {
+	if !a.timeoutSet {
+		saved := a.timeout
+		a.timeout = slowTimeout
+		defer func() { a.timeout = saved }()
+	}
+	return a.call(ctx, fn)
+}
+
+func (a *app) printProto(m proto.Message) error {
+	raw, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(m)
+	if err != nil {
+		return err
+	}
+	return a.printJSON(json.RawMessage(raw))
+}
+
+func printProtoList[T proto.Message](a *app, list []T) error {
+	out := make([]json.RawMessage, 0, len(list))
+	for _, m := range list {
+		raw, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(m)
+		if err != nil {
+			return err
+		}
+		out = append(out, raw)
+	}
+	return a.printJSON(out)
 }
 
 func (a *app) printJSON(v any) error {

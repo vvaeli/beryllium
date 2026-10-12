@@ -53,7 +53,7 @@ func dial(t *testing.T, addr string) *grpc.ClientConn {
 
 func TestDaemonLifecycle(t *testing.T) {
 	p := testPaths(t)
-	d := New(p, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	d := New(Options{Paths: p, Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
 
 	runErr := make(chan error, 1)
 	go func() { runErr <- d.Run(context.Background()) }()
@@ -77,9 +77,9 @@ func TestDaemonLifecycle(t *testing.T) {
 		t.Fatalf("Health = %v, %v", h, err)
 	}
 
-	_, err = berylliumv1.NewSubscriptionServiceClient(conn).ListSubscriptions(ctx, &berylliumv1.ListSubscriptionsRequest{})
+	_, err = berylliumv1.NewConnectionServiceClient(conn).GetStatus(ctx, &berylliumv1.GetStatusRequest{})
 	if status.Code(err) != codes.Unimplemented {
-		t.Errorf("ListSubscriptions err = %v, want Unimplemented", err)
+		t.Errorf("GetStatus err = %v, want Unimplemented", err)
 	}
 
 	if _, err := client.Shutdown(ctx, &berylliumv1.ShutdownRequest{}); err != nil {
@@ -103,7 +103,7 @@ func TestDaemonLifecycle(t *testing.T) {
 
 func TestDaemonStopsOnContextCancel(t *testing.T) {
 	p := testPaths(t)
-	d := New(p, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	d := New(Options{Paths: p, Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
 	ctx, cancel := context.WithCancel(context.Background())
 	runErr := make(chan error, 1)
 	go func() { runErr <- d.Run(ctx) }()

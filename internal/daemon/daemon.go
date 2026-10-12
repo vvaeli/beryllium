@@ -14,6 +14,9 @@ import (
 	berylliumv1 "github.com/vvaeli/beryllium/gen/go/beryllium/v1"
 	"github.com/vvaeli/beryllium/internal/ipc"
 	"github.com/vvaeli/beryllium/internal/paths"
+	"github.com/vvaeli/beryllium/internal/store"
+	"github.com/vvaeli/beryllium/internal/subscription"
+	"github.com/vvaeli/beryllium/internal/version"
 	"google.golang.org/grpc"
 )
 
@@ -24,19 +27,39 @@ const IPCGroup = "beryllium"
 // after shutdown starts.
 const gracePeriod = 5 * time.Second
 
+// DefaultUserAgent is sent when fetching subscriptions. Panels pick the
+// response format by User-Agent, and some (e.g. Remnawave) send Happ-style
+// extras such as the `routing` header only to Happ, so a Happ-compatible
+// prefix is used.
+var DefaultUserAgent = "Happ/4.0.0 (Beryllium/" + version.Version + ")"
+
+// Options configure a Daemon.
+type Options struct {
+	Paths paths.Paths
+	Log   *slog.Logger
+	// UserAgent for subscription downloads; empty uses DefaultUserAgent.
+	UserAgent string
+}
+
 // Daemon is a running berylliumd instance.
 type Daemon struct {
-	paths   paths.Paths
-	log     *slog.Logger
-	started time.Time
+	paths     paths.Paths
+	log       *slog.Logger
+	userAgent string
+	started   time.Time
+	subs      *subscription.Manager
 
 	shutdownOnce sync.Once
 	shutdownCh   chan struct{}
 }
 
 // New prepares a daemon; nothing is opened until Run.
-func New(p paths.Paths, log *slog.Logger) *Daemon {
-	return &Daemon{paths: p, log: log, shutdownCh: make(chan struct{})}
+func New(o Options) *Daemon {
+	ua := o.UserAgent
+	if ua == "" {
+		ua = DefaultUserAgent
+	}
+	return &Daemon{paths: o.Paths, log: o.Log, userAgent: ua, shutdownCh: make(chan struct{})}
 }
 
 // Run serves the API until ctx is canceled or a Shutdown RPC arrives, then
@@ -47,6 +70,13 @@ func (d *Daemon) Run(ctx context.Context) error {
 		return err
 	}
 	cfg, err := ConfigStore(d.paths).Load()
+	if err != nil {
+		return err
+	}
+
+	d.subs, err = subscription.NewManager(
+		store.Open[subscription.State](d.paths.StateFile("subscriptions.json")),
+		subscription.NewFetcher(d.userAgent), d.log)
 	if err != nil {
 		return err
 	}
@@ -67,6 +97,10 @@ func (d *Daemon) Run(ctx context.Context) error {
 	)
 	d.register(srv)
 
+	bgCtx, stopBackground := context.WithCancel(ctx)
+	defer stopBackground()
+	go d.subs.Run(bgCtx, time.Minute)
+
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.Serve(ln) }()
 	d.log.Info("daemon started", "socket", d.paths.Socket, "pid", os.Getpid())
@@ -79,6 +113,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}
 
 	d.log.Info("daemon stopping")
+	stopBackground()
 	stopped := make(chan struct{})
 	go func() { srv.GracefulStop(); close(stopped) }()
 	select {
@@ -101,7 +136,7 @@ func (d *Daemon) requestShutdown() {
 
 func (d *Daemon) register(s *grpc.Server) {
 	berylliumv1.RegisterDaemonServiceServer(s, &daemonService{d: d})
-	berylliumv1.RegisterSubscriptionServiceServer(s, &subscriptionService{})
+	berylliumv1.RegisterSubscriptionServiceServer(s, &subscriptionService{subs: d.subs})
 	berylliumv1.RegisterConnectionServiceServer(s, &connectionService{})
 	berylliumv1.RegisterTestServiceServer(s, &testService{})
 	berylliumv1.RegisterSettingsServiceServer(s, &settingsService{})
