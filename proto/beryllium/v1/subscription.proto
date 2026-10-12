@@ -19,6 +19,10 @@ service SubscriptionService {
   // Imports a standalone config (single URI or file such as an AmneziaWG .conf)
   // as a LOCAL subscription.
   rpc ImportConfig(ImportConfigRequest) returns (ImportConfigResponse);
+  // Returns a shareable link (for copying or a QR code) to a subscription
+  // or a single server. The result is a secret: frontends request it only on
+  // an explicit user action and never log or cache it.
+  rpc GetShareLink(GetShareLinkRequest) returns (GetShareLinkResponse);
 }
 
 enum SubscriptionKind {
@@ -141,4 +145,17 @@ message ImportConfigRequest {
 
 message ImportConfigResponse {
   Subscription subscription = 1;
+}
+
+message GetShareLinkRequest {
+  oneof target {
+    // Remote subscription: the original subscription URL.
+    string subscription_id = 1;
+    // Single server: a share URI (vless://, hy2://, awg:// ...).
+    string server_id = 2;
+  }
+}
+
+message GetShareLinkResponse {
+  string uri = 1;
 }

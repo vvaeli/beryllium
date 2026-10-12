@@ -1168,6 +1168,134 @@ func (x *ImportConfigResponse) GetSubscription() *Subscription {
 	return nil
 }
 
+type GetShareLinkRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Target:
+	//
+	//	*GetShareLinkRequest_SubscriptionId
+	//	*GetShareLinkRequest_ServerId
+	Target        isGetShareLinkRequest_Target `protobuf_oneof:"target"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetShareLinkRequest) Reset() {
+	*x = GetShareLinkRequest{}
+	mi := &file_beryllium_v1_subscription_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetShareLinkRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetShareLinkRequest) ProtoMessage() {}
+
+func (x *GetShareLinkRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_beryllium_v1_subscription_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetShareLinkRequest.ProtoReflect.Descriptor instead.
+func (*GetShareLinkRequest) Descriptor() ([]byte, []int) {
+	return file_beryllium_v1_subscription_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GetShareLinkRequest) GetTarget() isGetShareLinkRequest_Target {
+	if x != nil {
+		return x.Target
+	}
+	return nil
+}
+
+func (x *GetShareLinkRequest) GetSubscriptionId() string {
+	if x != nil {
+		if x, ok := x.Target.(*GetShareLinkRequest_SubscriptionId); ok {
+			return x.SubscriptionId
+		}
+	}
+	return ""
+}
+
+func (x *GetShareLinkRequest) GetServerId() string {
+	if x != nil {
+		if x, ok := x.Target.(*GetShareLinkRequest_ServerId); ok {
+			return x.ServerId
+		}
+	}
+	return ""
+}
+
+type isGetShareLinkRequest_Target interface {
+	isGetShareLinkRequest_Target()
+}
+
+type GetShareLinkRequest_SubscriptionId struct {
+	// Remote subscription: the original subscription URL.
+	SubscriptionId string `protobuf:"bytes,1,opt,name=subscription_id,json=subscriptionId,proto3,oneof"`
+}
+
+type GetShareLinkRequest_ServerId struct {
+	// Single server: a share URI (vless://, hy2://, awg:// ...).
+	ServerId string `protobuf:"bytes,2,opt,name=server_id,json=serverId,proto3,oneof"`
+}
+
+func (*GetShareLinkRequest_SubscriptionId) isGetShareLinkRequest_Target() {}
+
+func (*GetShareLinkRequest_ServerId) isGetShareLinkRequest_Target() {}
+
+type GetShareLinkResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Uri           string                 `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetShareLinkResponse) Reset() {
+	*x = GetShareLinkResponse{}
+	mi := &file_beryllium_v1_subscription_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetShareLinkResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetShareLinkResponse) ProtoMessage() {}
+
+func (x *GetShareLinkResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_beryllium_v1_subscription_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetShareLinkResponse.ProtoReflect.Descriptor instead.
+func (*GetShareLinkResponse) Descriptor() ([]byte, []int) {
+	return file_beryllium_v1_subscription_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *GetShareLinkResponse) GetUri() string {
+	if x != nil {
+		return x.Uri
+	}
+	return ""
+}
+
 var File_beryllium_v1_subscription_proto protoreflect.FileDescriptor
 
 const file_beryllium_v1_subscription_proto_rawDesc = "" +
@@ -1248,11 +1376,17 @@ const file_beryllium_v1_subscription_proto_rawDesc = "" +
 	"\x04name\x18\x04 \x01(\tR\x04nameB\b\n" +
 	"\x06source\"V\n" +
 	"\x14ImportConfigResponse\x12>\n" +
-	"\fsubscription\x18\x01 \x01(\v2\x1a.beryllium.v1.SubscriptionR\fsubscription*p\n" +
+	"\fsubscription\x18\x01 \x01(\v2\x1a.beryllium.v1.SubscriptionR\fsubscription\"i\n" +
+	"\x13GetShareLinkRequest\x12)\n" +
+	"\x0fsubscription_id\x18\x01 \x01(\tH\x00R\x0esubscriptionId\x12\x1d\n" +
+	"\tserver_id\x18\x02 \x01(\tH\x00R\bserverIdB\b\n" +
+	"\x06target\"(\n" +
+	"\x14GetShareLinkResponse\x12\x10\n" +
+	"\x03uri\x18\x01 \x01(\tR\x03uri*p\n" +
 	"\x10SubscriptionKind\x12!\n" +
 	"\x1dSUBSCRIPTION_KIND_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18SUBSCRIPTION_KIND_REMOTE\x10\x01\x12\x1b\n" +
-	"\x17SUBSCRIPTION_KIND_LOCAL\x10\x022\xbc\x06\n" +
+	"\x17SUBSCRIPTION_KIND_LOCAL\x10\x022\x93\a\n" +
 	"\x13SubscriptionService\x12^\n" +
 	"\x0fAddSubscription\x12$.beryllium.v1.AddSubscriptionRequest\x1a%.beryllium.v1.AddSubscriptionResponse\x12d\n" +
 	"\x11ListSubscriptions\x12&.beryllium.v1.ListSubscriptionsRequest\x1a'.beryllium.v1.ListSubscriptionsResponse\x12g\n" +
@@ -1261,7 +1395,8 @@ const file_beryllium_v1_subscription_proto_rawDesc = "" +
 	"\x13RefreshSubscription\x12(.beryllium.v1.RefreshSubscriptionRequest\x1a).beryllium.v1.RefreshSubscriptionResponse\x12v\n" +
 	"\x17RefreshAllSubscriptions\x12,.beryllium.v1.RefreshAllSubscriptionsRequest\x1a-.beryllium.v1.RefreshAllSubscriptionsResponse\x12R\n" +
 	"\vListServers\x12 .beryllium.v1.ListServersRequest\x1a!.beryllium.v1.ListServersResponse\x12U\n" +
-	"\fImportConfig\x12!.beryllium.v1.ImportConfigRequest\x1a\".beryllium.v1.ImportConfigResponseB\xb3\x01\n" +
+	"\fImportConfig\x12!.beryllium.v1.ImportConfigRequest\x1a\".beryllium.v1.ImportConfigResponse\x12U\n" +
+	"\fGetShareLink\x12!.beryllium.v1.GetShareLinkRequest\x1a\".beryllium.v1.GetShareLinkResponseB\xb3\x01\n" +
 	"\x10com.beryllium.v1B\x11SubscriptionProtoP\x01Z;github.com/vvaeli/beryllium/gen/go/beryllium/v1;berylliumv1\xa2\x02\x03BXX\xaa\x02\fBeryllium.V1\xca\x02\fBeryllium\\V1\xe2\x02\x18Beryllium\\V1\\GPBMetadata\xea\x02\rBeryllium::V1b\x06proto3"
 
 var (
@@ -1277,7 +1412,7 @@ func file_beryllium_v1_subscription_proto_rawDescGZIP() []byte {
 }
 
 var file_beryllium_v1_subscription_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_beryllium_v1_subscription_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_beryllium_v1_subscription_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_beryllium_v1_subscription_proto_goTypes = []any{
 	(SubscriptionKind)(0),                   // 0: beryllium.v1.SubscriptionKind
 	(*Subscription)(nil),                    // 1: beryllium.v1.Subscription
@@ -1299,28 +1434,30 @@ var file_beryllium_v1_subscription_proto_goTypes = []any{
 	(*ListServersResponse)(nil),             // 17: beryllium.v1.ListServersResponse
 	(*ImportConfigRequest)(nil),             // 18: beryllium.v1.ImportConfigRequest
 	(*ImportConfigResponse)(nil),            // 19: beryllium.v1.ImportConfigResponse
-	(*timestamppb.Timestamp)(nil),           // 20: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),             // 21: google.protobuf.Duration
-	(Protocol)(0),                           // 22: beryllium.v1.Protocol
-	(Transport)(0),                          // 23: beryllium.v1.Transport
-	(Security)(0),                           // 24: beryllium.v1.Security
-	(CoreKind)(0),                           // 25: beryllium.v1.CoreKind
+	(*GetShareLinkRequest)(nil),             // 20: beryllium.v1.GetShareLinkRequest
+	(*GetShareLinkResponse)(nil),            // 21: beryllium.v1.GetShareLinkResponse
+	(*timestamppb.Timestamp)(nil),           // 22: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),             // 23: google.protobuf.Duration
+	(Protocol)(0),                           // 24: beryllium.v1.Protocol
+	(Transport)(0),                          // 25: beryllium.v1.Transport
+	(Security)(0),                           // 26: beryllium.v1.Security
+	(CoreKind)(0),                           // 27: beryllium.v1.CoreKind
 }
 var file_beryllium_v1_subscription_proto_depIdxs = []int32{
 	0,  // 0: beryllium.v1.Subscription.kind:type_name -> beryllium.v1.SubscriptionKind
-	20, // 1: beryllium.v1.Subscription.updated_at:type_name -> google.protobuf.Timestamp
-	21, // 2: beryllium.v1.Subscription.auto_update_interval:type_name -> google.protobuf.Duration
+	22, // 1: beryllium.v1.Subscription.updated_at:type_name -> google.protobuf.Timestamp
+	23, // 2: beryllium.v1.Subscription.auto_update_interval:type_name -> google.protobuf.Duration
 	2,  // 3: beryllium.v1.Subscription.quota:type_name -> beryllium.v1.Quota
-	20, // 4: beryllium.v1.Quota.expires_at:type_name -> google.protobuf.Timestamp
-	22, // 5: beryllium.v1.Server.protocol:type_name -> beryllium.v1.Protocol
-	23, // 6: beryllium.v1.Server.transport:type_name -> beryllium.v1.Transport
-	24, // 7: beryllium.v1.Server.security:type_name -> beryllium.v1.Security
-	25, // 8: beryllium.v1.Server.supported_cores:type_name -> beryllium.v1.CoreKind
-	21, // 9: beryllium.v1.Server.latency:type_name -> google.protobuf.Duration
-	20, // 10: beryllium.v1.Server.latency_tested_at:type_name -> google.protobuf.Timestamp
+	22, // 4: beryllium.v1.Quota.expires_at:type_name -> google.protobuf.Timestamp
+	24, // 5: beryllium.v1.Server.protocol:type_name -> beryllium.v1.Protocol
+	25, // 6: beryllium.v1.Server.transport:type_name -> beryllium.v1.Transport
+	26, // 7: beryllium.v1.Server.security:type_name -> beryllium.v1.Security
+	27, // 8: beryllium.v1.Server.supported_cores:type_name -> beryllium.v1.CoreKind
+	23, // 9: beryllium.v1.Server.latency:type_name -> google.protobuf.Duration
+	22, // 10: beryllium.v1.Server.latency_tested_at:type_name -> google.protobuf.Timestamp
 	1,  // 11: beryllium.v1.AddSubscriptionResponse.subscription:type_name -> beryllium.v1.Subscription
 	1,  // 12: beryllium.v1.ListSubscriptionsResponse.subscriptions:type_name -> beryllium.v1.Subscription
-	21, // 13: beryllium.v1.UpdateSubscriptionRequest.auto_update_interval:type_name -> google.protobuf.Duration
+	23, // 13: beryllium.v1.UpdateSubscriptionRequest.auto_update_interval:type_name -> google.protobuf.Duration
 	1,  // 14: beryllium.v1.UpdateSubscriptionResponse.subscription:type_name -> beryllium.v1.Subscription
 	1,  // 15: beryllium.v1.RefreshSubscriptionResponse.subscription:type_name -> beryllium.v1.Subscription
 	1,  // 16: beryllium.v1.RefreshAllSubscriptionsResponse.subscriptions:type_name -> beryllium.v1.Subscription
@@ -1334,16 +1471,18 @@ var file_beryllium_v1_subscription_proto_depIdxs = []int32{
 	14, // 24: beryllium.v1.SubscriptionService.RefreshAllSubscriptions:input_type -> beryllium.v1.RefreshAllSubscriptionsRequest
 	16, // 25: beryllium.v1.SubscriptionService.ListServers:input_type -> beryllium.v1.ListServersRequest
 	18, // 26: beryllium.v1.SubscriptionService.ImportConfig:input_type -> beryllium.v1.ImportConfigRequest
-	5,  // 27: beryllium.v1.SubscriptionService.AddSubscription:output_type -> beryllium.v1.AddSubscriptionResponse
-	7,  // 28: beryllium.v1.SubscriptionService.ListSubscriptions:output_type -> beryllium.v1.ListSubscriptionsResponse
-	9,  // 29: beryllium.v1.SubscriptionService.RemoveSubscription:output_type -> beryllium.v1.RemoveSubscriptionResponse
-	11, // 30: beryllium.v1.SubscriptionService.UpdateSubscription:output_type -> beryllium.v1.UpdateSubscriptionResponse
-	13, // 31: beryllium.v1.SubscriptionService.RefreshSubscription:output_type -> beryllium.v1.RefreshSubscriptionResponse
-	15, // 32: beryllium.v1.SubscriptionService.RefreshAllSubscriptions:output_type -> beryllium.v1.RefreshAllSubscriptionsResponse
-	17, // 33: beryllium.v1.SubscriptionService.ListServers:output_type -> beryllium.v1.ListServersResponse
-	19, // 34: beryllium.v1.SubscriptionService.ImportConfig:output_type -> beryllium.v1.ImportConfigResponse
-	27, // [27:35] is the sub-list for method output_type
-	19, // [19:27] is the sub-list for method input_type
+	20, // 27: beryllium.v1.SubscriptionService.GetShareLink:input_type -> beryllium.v1.GetShareLinkRequest
+	5,  // 28: beryllium.v1.SubscriptionService.AddSubscription:output_type -> beryllium.v1.AddSubscriptionResponse
+	7,  // 29: beryllium.v1.SubscriptionService.ListSubscriptions:output_type -> beryllium.v1.ListSubscriptionsResponse
+	9,  // 30: beryllium.v1.SubscriptionService.RemoveSubscription:output_type -> beryllium.v1.RemoveSubscriptionResponse
+	11, // 31: beryllium.v1.SubscriptionService.UpdateSubscription:output_type -> beryllium.v1.UpdateSubscriptionResponse
+	13, // 32: beryllium.v1.SubscriptionService.RefreshSubscription:output_type -> beryllium.v1.RefreshSubscriptionResponse
+	15, // 33: beryllium.v1.SubscriptionService.RefreshAllSubscriptions:output_type -> beryllium.v1.RefreshAllSubscriptionsResponse
+	17, // 34: beryllium.v1.SubscriptionService.ListServers:output_type -> beryllium.v1.ListServersResponse
+	19, // 35: beryllium.v1.SubscriptionService.ImportConfig:output_type -> beryllium.v1.ImportConfigResponse
+	21, // 36: beryllium.v1.SubscriptionService.GetShareLink:output_type -> beryllium.v1.GetShareLinkResponse
+	28, // [28:37] is the sub-list for method output_type
+	19, // [19:28] is the sub-list for method input_type
 	19, // [19:19] is the sub-list for extension type_name
 	19, // [19:19] is the sub-list for extension extendee
 	0,  // [0:19] is the sub-list for field type_name
@@ -1360,13 +1499,17 @@ func file_beryllium_v1_subscription_proto_init() {
 		(*ImportConfigRequest_Uri)(nil),
 		(*ImportConfigRequest_FileContent)(nil),
 	}
+	file_beryllium_v1_subscription_proto_msgTypes[19].OneofWrappers = []any{
+		(*GetShareLinkRequest_SubscriptionId)(nil),
+		(*GetShareLinkRequest_ServerId)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_beryllium_v1_subscription_proto_rawDesc), len(file_beryllium_v1_subscription_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   19,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

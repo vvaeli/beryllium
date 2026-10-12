@@ -27,6 +27,7 @@ const (
 	SubscriptionService_RefreshAllSubscriptions_FullMethodName = "/beryllium.v1.SubscriptionService/RefreshAllSubscriptions"
 	SubscriptionService_ListServers_FullMethodName             = "/beryllium.v1.SubscriptionService/ListServers"
 	SubscriptionService_ImportConfig_FullMethodName            = "/beryllium.v1.SubscriptionService/ImportConfig"
+	SubscriptionService_GetShareLink_FullMethodName            = "/beryllium.v1.SubscriptionService/GetShareLink"
 )
 
 // SubscriptionServiceClient is the client API for SubscriptionService service.
@@ -45,6 +46,10 @@ type SubscriptionServiceClient interface {
 	// Imports a standalone config (single URI or file such as an AmneziaWG .conf)
 	// as a LOCAL subscription.
 	ImportConfig(ctx context.Context, in *ImportConfigRequest, opts ...grpc.CallOption) (*ImportConfigResponse, error)
+	// Returns a shareable link (for copying or a QR code) to a subscription
+	// or a single server. The result is a secret: frontends request it only on
+	// an explicit user action and never log or cache it.
+	GetShareLink(ctx context.Context, in *GetShareLinkRequest, opts ...grpc.CallOption) (*GetShareLinkResponse, error)
 }
 
 type subscriptionServiceClient struct {
@@ -135,6 +140,16 @@ func (c *subscriptionServiceClient) ImportConfig(ctx context.Context, in *Import
 	return out, nil
 }
 
+func (c *subscriptionServiceClient) GetShareLink(ctx context.Context, in *GetShareLinkRequest, opts ...grpc.CallOption) (*GetShareLinkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetShareLinkResponse)
+	err := c.cc.Invoke(ctx, SubscriptionService_GetShareLink_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SubscriptionServiceServer is the server API for SubscriptionService service.
 // All implementations must embed UnimplementedSubscriptionServiceServer
 // for forward compatibility.
@@ -151,6 +166,10 @@ type SubscriptionServiceServer interface {
 	// Imports a standalone config (single URI or file such as an AmneziaWG .conf)
 	// as a LOCAL subscription.
 	ImportConfig(context.Context, *ImportConfigRequest) (*ImportConfigResponse, error)
+	// Returns a shareable link (for copying or a QR code) to a subscription
+	// or a single server. The result is a secret: frontends request it only on
+	// an explicit user action and never log or cache it.
+	GetShareLink(context.Context, *GetShareLinkRequest) (*GetShareLinkResponse, error)
 	mustEmbedUnimplementedSubscriptionServiceServer()
 }
 
@@ -184,6 +203,9 @@ func (UnimplementedSubscriptionServiceServer) ListServers(context.Context, *List
 }
 func (UnimplementedSubscriptionServiceServer) ImportConfig(context.Context, *ImportConfigRequest) (*ImportConfigResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ImportConfig not implemented")
+}
+func (UnimplementedSubscriptionServiceServer) GetShareLink(context.Context, *GetShareLinkRequest) (*GetShareLinkResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetShareLink not implemented")
 }
 func (UnimplementedSubscriptionServiceServer) mustEmbedUnimplementedSubscriptionServiceServer() {}
 func (UnimplementedSubscriptionServiceServer) testEmbeddedByValue()                             {}
@@ -350,6 +372,24 @@ func _SubscriptionService_ImportConfig_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SubscriptionService_GetShareLink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetShareLinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubscriptionServiceServer).GetShareLink(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubscriptionService_GetShareLink_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubscriptionServiceServer).GetShareLink(ctx, req.(*GetShareLinkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SubscriptionService_ServiceDesc is the grpc.ServiceDesc for SubscriptionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -388,6 +428,10 @@ var SubscriptionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ImportConfig",
 			Handler:    _SubscriptionService_ImportConfig_Handler,
+		},
+		{
+			MethodName: "GetShareLink",
+			Handler:    _SubscriptionService_GetShareLink_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

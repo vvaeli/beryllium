@@ -56,7 +56,7 @@ Beryllium is a cross-platform desktop proxy/VPN client for Arch Linux, macOS and
 
 ## API (proto)
 
-`proto/beryllium/v1/*.proto` is the single contract for the daemon and all three frontends. buf STANDARD lint applies: every RPC has its own `<Rpc>Request`/`<Rpc>Response`, and enum values are prefixed with the enum name and start with `_UNSPECIFIED`. Errors are gRPC status codes with `ErrorDetail` (an `ErrorReason`) in the details. Credentials and full subscription URLs never cross the API: `Server` is a public view, and `Subscription` has only `url_masked`.
+`proto/beryllium/v1/*.proto` is the single contract for the daemon and all three frontends. buf STANDARD lint applies: every RPC has its own `<Rpc>Request`/`<Rpc>Response`, and enum values are prefixed with the enum name and start with `_UNSPECIFIED`. Errors are gRPC status codes with `ErrorDetail` (an `ErrorReason`) in the details. Credentials and full subscription URLs never cross the API, except through `GetShareLink` (for copy/QR), which frontends call only on explicit user action and must never log or cache. `Server` is a public view, and `Subscription` has only `url_masked`.
 
 ## Packaging
 
