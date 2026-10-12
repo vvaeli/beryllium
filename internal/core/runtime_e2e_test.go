@@ -198,6 +198,17 @@ func TestRuntimeEndToEnd(t *testing.T) {
 		}
 	})
 
+	t.Run("relative cores dir", func(t *testing.T) {
+		rel, err := filepath.Rel(mustGetwd(t), bins.Dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r := newTestRuntime(t, LoadBinaries(rel))
+		if _, err := r.Connect(context.Background(), cases[0].srv, ""); err != nil {
+			t.Fatalf("Connect with relative cores dir %q: %v", rel, err)
+		}
+	})
+
 	t.Run("startup failure is reported", func(t *testing.T) {
 		r := newTestRuntime(t, bins)
 		bad := model.Server{Protocol: model.VLESS, Address: "127.0.0.1", Port: 1, UUID: "x",
@@ -206,4 +217,13 @@ func TestRuntimeEndToEnd(t *testing.T) {
 			t.Fatalf("Connect(bad) err=%v status=%+v", err, r.Status())
 		}
 	})
+}
+
+func mustGetwd(t *testing.T) string {
+	t.Helper()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return wd
 }

@@ -55,7 +55,12 @@ type manifestEntry struct {
 }
 
 // LoadBinaries reads dir. A missing manifest only means unknown versions.
+// dir is made absolute: cores run with their own working directory, where
+// a relative path would no longer resolve.
 func LoadBinaries(dir string) *Binaries {
+	if abs, err := filepath.Abs(dir); err == nil {
+		dir = abs
+	}
 	b := &Binaries{Dir: dir, versions: map[Kind]string{}}
 	raw, err := os.ReadFile(filepath.Join(dir, "manifest.json"))
 	if err != nil {
