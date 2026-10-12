@@ -198,14 +198,27 @@ func TestRuntimeEndToEnd(t *testing.T) {
 		}
 	})
 
-	t.Run("relative cores dir", func(t *testing.T) {
-		rel, err := filepath.Rel(mustGetwd(t), bins.Dir)
+	// Like `berylliumd -config-dir .dev/state -cores-dir cores/bin/...`.
+	t.Run("relative cores and work dirs", func(t *testing.T) {
+		wd := mustGetwd(t)
+		relCores, err := filepath.Rel(wd, bins.Dir)
 		if err != nil {
 			t.Fatal(err)
 		}
-		r := newTestRuntime(t, LoadBinaries(rel))
+		work, err := os.MkdirTemp(wd, ".test-work-")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { os.RemoveAll(work) })
+		port, _ := freePort()
+		r := New(Options{Binaries: LoadBinaries(relCores), WorkDir: filepath.Base(work), MixedPort: port,
+			Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
+		t.Cleanup(r.Close)
 		if _, err := r.Connect(context.Background(), cases[0].srv, ""); err != nil {
-			t.Fatalf("Connect with relative cores dir %q: %v", rel, err)
+			t.Fatalf("Connect with relative dirs: %v", err)
+		}
+		if got := getThrough(t, r, target.URL); got != "hello through the tunnel" {
+			t.Fatalf("body = %q", got)
 		}
 	})
 

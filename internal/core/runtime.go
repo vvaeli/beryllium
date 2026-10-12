@@ -94,6 +94,11 @@ type trafficSample struct {
 
 // New prepares a runtime and kills cores orphaned by a previous crash.
 func New(o Options) *Runtime {
+	// Cores run inside WorkDir/run, so config paths passed to them must
+	// not be relative.
+	if abs, err := filepath.Abs(o.WorkDir); err == nil {
+		o.WorkDir = abs
+	}
 	if o.MixedPort == 0 {
 		o.MixedPort = DefaultMixedPort
 	}

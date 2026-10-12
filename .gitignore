@@ -31,3 +31,6 @@ cores/bin/
 .dev/
 .env
 *.local.json
+
+# Leftovers of interrupted core tests
+internal/core/.test-work-*/

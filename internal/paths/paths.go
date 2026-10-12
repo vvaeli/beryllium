@@ -1,7 +1,10 @@
 // Package paths resolves OS-specific locations used by the daemon.
 package paths
 
-import "path/filepath"
+import (
+	"path/filepath"
+	"strings"
+)
 
 // Paths are the filesystem locations used by the daemon.
 type Paths struct {
@@ -23,4 +26,21 @@ func (p Paths) StateFile(name string) string {
 // LogFile returns the daemon log file path.
 func (p Paths) LogFile() string {
 	return filepath.Join(p.LogDir, "daemon.log")
+}
+
+// Abs returns p with every filesystem path made absolute. Cores and
+// services run with other working directories, where relative paths would
+// resolve elsewhere. Windows named pipes are left as is.
+func (p Paths) Abs() (Paths, error) {
+	for _, f := range []*string{&p.StateDir, &p.LogDir, &p.CoresDir, &p.Socket} {
+		if *f == "" || strings.HasPrefix(*f, `\\.\pipe\`) {
+			continue
+		}
+		abs, err := filepath.Abs(*f)
+		if err != nil {
+			return p, err
+		}
+		*f = abs
+	}
+	return p, nil
 }

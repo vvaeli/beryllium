@@ -50,6 +50,16 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	if p, err = p.Abs(); err != nil {
+		return err
+	}
+	// Store absolute paths in the flags too, so `install` bakes them into
+	// the service definition (services start in another directory).
+	for name, v := range map[string]string{"config-dir": p.StateDir, "log-dir": p.LogDir, "socket": p.Socket, "cores-dir": p.CoresDir} {
+		if isSet(name) {
+			_ = flag.Set(name, v)
+		}
+	}
 
 	// Flags given at install time are baked into the service definition.
 	var svcArgs []string
@@ -77,6 +87,12 @@ func run() error {
 
 	log.Info("berylliumd", "version", version.String(), "os", runtime.GOOS, "arch", runtime.GOARCH)
 	return svc.Run()
+}
+
+func isSet(name string) bool {
+	set := false
+	flag.Visit(func(f *flag.Flag) { set = set || f.Name == name })
+	return set
 }
 
 func serviceConfig(args []string) *service.Config {
