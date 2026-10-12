@@ -158,8 +158,8 @@ func singBoxTLS(s *model.Server) map[string]any {
 	if t.Insecure {
 		tls["insecure"] = true
 	}
-	if len(t.ALPN) > 0 {
-		tls["alpn"] = t.ALPN
+	if alpn := alpnFor(s); len(alpn) > 0 {
+		tls["alpn"] = alpn
 	}
 	if s.TUIC != nil && s.TUIC.DisableSNI {
 		tls["disable_sni"] = true
@@ -173,6 +173,21 @@ func singBoxTLS(s *model.Server) map[string]any {
 		tls["utls"] = map[string]any{"enabled": true, "fingerprint": fp}
 	}
 	return tls
+}
+
+// alpnFor drops ALPN values a transport can't use. WebSocket and
+// HTTPUpgrade are HTTP/1.1 upgrades: offering h2 lets the server pick
+// HTTP/2 and the upgrade then fails with an EOF. Xray applies the same rule
+// internally, and panels often publish "h2,http/1.1" for WS anyway.
+func alpnFor(s *model.Server) []string {
+	alpn := s.TLS.ALPN
+	if s.Transport == nil || (s.Transport.Type != "ws" && s.Transport.Type != "httpupgrade") {
+		return alpn
+	}
+	if len(alpn) == 0 {
+		return nil
+	}
+	return []string{"http/1.1"}
 }
 
 func singBoxTransport(t *model.Transport) map[string]any {

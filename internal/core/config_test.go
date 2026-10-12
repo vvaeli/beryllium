@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -93,6 +94,20 @@ func TestChooseMatrix(t *testing.T) {
 	}
 	if _, err := Choose(corpusServer(t, "vless-xhttp-reality"), "", func(k Kind) bool { return k != Xray }); !errors.Is(err, ErrNoCore) {
 		t.Errorf("xhttp without xray installed: %v", err)
+	}
+}
+
+func TestWebSocketALPN(t *testing.T) {
+	out, err := singBoxOutbound(corpusServer(t, "vless-ws-tls-ed"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if alpn := out["tls"].(map[string]any)["alpn"]; !reflect.DeepEqual(alpn, []string{"http/1.1"}) {
+		t.Fatalf("ws alpn = %v, want [http/1.1]", alpn)
+	}
+	out, _ = singBoxOutbound(corpusServer(t, "vless-h2"))
+	if _, ok := out["tls"].(map[string]any)["alpn"]; ok {
+		t.Fatal("alpn added where the link had none")
 	}
 }
 
