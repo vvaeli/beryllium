@@ -8,6 +8,7 @@
 static io_connect_t rootPort;
 
 static void powerCallback(void *ref, io_service_t service, natural_t type, void *arg) {
+	goPowerMessage(type); // diagnostics: which messages macOS sends
 	switch (type) {
 	case kIOMessageCanSystemSleep:
 		IOAllowPowerChange(rootPort, (long)arg);

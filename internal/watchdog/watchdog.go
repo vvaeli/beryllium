@@ -412,6 +412,9 @@ func (w *Watchdog) wake(ctx context.Context, tr Trigger) {
 		w.offline(epoch, reach)
 		return
 	}
+	if waited := w.clock.Now().Sub(start); waited > time.Second {
+		w.log.Info("network is ready", "waited", waited.Round(time.Millisecond))
+	}
 	w.t.AfterWake(ctx)
 	did, err := w.t.Recover(ctx, StepResetConnections)
 	if err != nil && !errors.Is(err, ErrSkip) {

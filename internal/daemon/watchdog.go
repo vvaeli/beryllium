@@ -48,7 +48,12 @@ func (t recoveryTarget) Reach(ctx context.Context) watchdog.Reach {
 	return watchdog.Offline
 }
 
-func (t recoveryTarget) AfterWake(ctx context.Context) { netwatch.FlushDNS(ctx) }
+// AfterWake flushes the OS DNS cache in the background: it only matters to
+// apps (sing-box resolves on its own), and dscacheutil can take seconds,
+// which would delay the tunnel check.
+func (t recoveryTarget) AfterWake(ctx context.Context) {
+	go netwatch.FlushDNS(context.WithoutCancel(ctx))
+}
 
 func (t recoveryTarget) Recover(ctx context.Context, s watchdog.Step) (string, error) {
 	c := t.c

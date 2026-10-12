@@ -161,8 +161,11 @@ func (d *Daemon) Run(ctx context.Context) error {
 	go d.wd.Run(bgCtx)
 	if !d.opts.NoSystemEvents {
 		go netwatch.Run(bgCtx, d.log, core.TUNPrefixes(), netwatch.Events{
-			Sleep:     func() { d.wd.Sleep(bgCtx) },
-			Wake:      func(string) { d.wd.Trigger(bgCtx, watchdog.TriggerWake, false) },
+			Sleep: func() { d.wd.Sleep(bgCtx) },
+			Wake: func(source string) {
+				d.log.Info("woke up", "detected_by", source)
+				d.wd.Trigger(bgCtx, watchdog.TriggerWake, false)
+			},
 			NetChange: func(_, _ netwatch.Network) { d.wd.Trigger(bgCtx, watchdog.TriggerNetChange, false) },
 		})
 	}
