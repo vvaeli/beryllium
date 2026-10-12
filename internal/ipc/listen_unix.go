@@ -90,8 +90,11 @@ func (l *peerListener) Accept() (net.Conn, error) {
 	}
 	uid, gids, err := peerCred(c)
 	allowed := err == nil && l.allowed(uid, gids)
-	if !allowed {
-		l.access.logger().Warn("ipc: unauthorized peer", "uid", uid, "err", err)
+	switch {
+	case err != nil:
+		l.access.logger().Warn("ipc: can't identify peer", "err", err)
+	case !allowed:
+		l.access.logger().Warn("ipc: unauthorized peer", "uid", uid)
 	}
 	return peerConn{Conn: c, peer: PeerAddr{Addr: c.RemoteAddr(), UID: uid, Allowed: allowed}}, nil
 }
