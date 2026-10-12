@@ -173,7 +173,7 @@
 ### 6B. TUN
 - [x] 6.6 TUN-inbound sing-box: `auto_route`, `strict_route`, `route.auto_detect_interface`, `stack: mixed`, MTU 9000, адреса IPv4 и IPv6. Нужен root/Administrator, без него — понятная ошибка
 - [x] 6.7 🍎 `utun` поднимается от root, трафик идёт через туннель (проверено вручную). Остаётся проверить запуск именно через launchd (фаза 7)
-- [ ] 6.8 🐧 проверить совместимость с NetworkManager, systemd-resolved, nftables/iptables, а также без systemd (runit/OpenRC + connman/iwd/dhcpcd). Уже есть: `scripts/tun-e2e.sh` (`just test-linux-tun`, задача `tun-e2e` в CI) поднимает TUN от root в контейнере и проверяет трафик, отказ IPv6, перехват DNS, переключение режимов и очистку маршрутов
+- [x] 6.8 🐧 TUN проверен в Docker-контейнере от root (`scripts/tun-e2e.sh`: `just test-linux-tun` и задача `tun-e2e` в CI): трафик через туннель, перехват DNS, отказ IPv6 до рукопожатия, переключение режимов на лету, после отключения не остаётся tun и правил маршрутизации. Проверка на живом рабочем столе с NetworkManager, systemd-resolved, nftables и без systemd — в 10.9.5
 - [ ] 6.9 🪟 wintun: sing-box встраивает драйвер, протестировать на Windows 10 и 11
 - [x] 6.10 Защита от петли: `auto_detect_interface` для самого sing-box и правило `process_path → direct` для Xray, mihomo, sing-box (замеры задержки) и демона (geo-файлы, подписки)
 - [x] 6.11 Переключение TUN ↔ системный прокси ↔ локальный прокси на лету без потери сервера и ядра (`beryl mode`, `UpdateSettings(mode)`)
@@ -323,7 +323,7 @@
 - [ ] 10.9.1 🐧 Arch: `.pkg.tar.zst` в каждом релизе (`makepkg` в контейнере `archlinux` в CI), установка через `sudo pacman -U`
 - [ ] 10.9.2 🐧 Debian/Ubuntu `.deb` и Fedora/openSUSE `.rpm` из тех же файлов
 - [ ] 10.9.3 🐧 Скрипты пакета: post-install — группа (`systemd-sysusers`, а без него `groupadd -r beryllium`), перезагрузка конфигурации init-системы, подсказка `usermod -aG beryllium $USER`; pre-remove — остановить службу и вернуть системный прокси
-- [ ] 10.9.5 🐧 Artix: пакеты для OpenRC/runit/dinit/s6 и проверка на VM с runit + niri и OpenRC + Hyprland (без systemd, elogind или seatd)
+- [ ] 10.9.5 🐧 Artix: пакеты для OpenRC/runit/dinit/s6 и проверка на VM с runit + niri и OpenRC + Hyprland (без systemd, elogind или seatd); на Arch/Fedora — TUN рядом с NetworkManager, systemd-resolved и nftables, системный прокси в GNOME и KDE
 - [ ] 10.9.4 🐧 AUR: `beryllium-bin` (готовые бинарники) и `beryllium-git` (сборка из исходников); `.install`-хук создаёт группу `beryllium` и включает службу
 - [ ] 10.10 Пакет только с CLI и TUI (без GUI) для всех ОС: архив + `beryllium-cli` в AUR
 - [ ] 10.11 Полное удаление: служба, файлы, группа, маркеры прокси, маршруты; на каждой ОС проверено вручную

@@ -24,7 +24,12 @@ ip link | grep -q tun0 || fail "no tun0"
 out=$(curl -6 -sS -m 5 -o /dev/null https://[2606:4700:4700::1111]/ 2>&1 || true)
 echo "$out" | grep -q "Could not connect" || fail "IPv6 not refused: $out"
 getent hosts example.com >/dev/null || fail "DNS through the tunnel"
-$B status | grep -q "traffic" || fail "no traffic counters"
+ok=""
+for _ in 1 2 3 4 5; do
+	if $B status | grep -q "traffic"; then ok=1; break; fi
+	sleep 1
+done
+[ -n "$ok" ] || { $B status; fail "no traffic counters"; }
 
 $B mode local >/dev/null
 $B status | grep -q "mode:     local" || fail "switch to local"

@@ -120,7 +120,9 @@ func (s *connectionService) status(ctx context.Context) *berylliumv1.ConnectionS
 		p.Error = &berylliumv1.ErrorDetail{Reason: reason, Message: st.Err.Error()}
 	}
 	if st.State == core.StateConnected {
-		tctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+		// Generous: right after a start the Clash API can be slow on a busy
+		// machine, and missing counters look like a broken connection.
+		tctx, cancel := context.WithTimeout(ctx, 1500*time.Millisecond)
 		defer cancel()
 		if tr, err := s.rt.Traffic(tctx); err == nil {
 			p.Traffic = &berylliumv1.TrafficStats{UploadBytesTotal: tr.Upload, DownloadBytesTotal: tr.Download,
