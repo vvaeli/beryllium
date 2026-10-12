@@ -1,0 +1,32 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Go
+/bin/
+/dist/
+*.test
+*.out
+coverage.*
+
+# Rust / Tauri
+target/
+gui/src-tauri/gen/
+
+# Node
+node_modules/
+gui/dist/
+gui/build/
+
+# Core binaries (fetched by `just fetch-cores`)
+cores/bin/
+
+# Local secrets / state
+.env
+*.local.json
