@@ -144,11 +144,24 @@ func control(svc service.Service, cmd string, p paths.Paths) error {
 		if err := svc.Install(); err != nil {
 			return err
 		}
-		fmt.Println("service installed; start it with: berylliumd start")
+		// launchd may load a new LaunchDaemon on its own right away.
+		if st, err := svc.Status(); err == nil && st == service.StatusRunning {
+			fmt.Println("service installed and running")
+		} else {
+			fmt.Println("service installed; start it with: berylliumd start")
+		}
 		return nil
 	case "uninstall", "start", "stop", "restart":
 		if err := requireAdmin(); err != nil {
 			return err
+		}
+		// launchctl fails with "Load failed: 5: Input/output error" when
+		// the job is already loaded.
+		if cmd == "start" {
+			if st, err := svc.Status(); err == nil && st == service.StatusRunning {
+				fmt.Println("already running")
+				return nil
+			}
 		}
 		return service.Control(svc, cmd)
 	case "status":
