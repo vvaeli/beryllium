@@ -12,8 +12,8 @@ import (
 )
 
 // Listen creates the named pipe at addr. Access is enforced by the pipe's
-// security descriptor: SYSTEM, Administrators, the daemon's own user and
-// the SIDs in a.
+// security descriptor (SYSTEM, Administrators, the daemon's own user and
+// the SIDs in a), so every accepted peer is marked allowed.
 func Listen(addr string, a Access) (net.Listener, error) {
 	sids := append([]string{}, a.SIDs...)
 	if self, err := currentUserSID(); err == nil {
@@ -34,7 +34,17 @@ func Listen(addr string, a Access) (net.Listener, error) {
 		}
 		return nil, err
 	}
-	return ln, nil
+	return pipeListener{ln}, nil
+}
+
+type pipeListener struct{ net.Listener }
+
+func (l pipeListener) Accept() (net.Conn, error) {
+	c, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	return peerConn{Conn: c, peer: PeerAddr{Addr: c.RemoteAddr(), Allowed: true}}, nil
 }
 
 func pipeServed(addr string) bool {

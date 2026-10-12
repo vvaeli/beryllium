@@ -5,6 +5,7 @@ package ipc
 import (
 	"context"
 	"errors"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -32,9 +33,14 @@ func TestListenAcceptsSelf(t *testing.T) {
 
 	go func() {
 		c, err := ln.Accept()
-		if err == nil {
+		if err != nil {
+			return
+		}
+		defer c.Close()
+		if Authorized(c.RemoteAddr()) {
 			c.Write([]byte("ok"))
-			c.Close()
+		} else {
+			c.Write([]byte("no"))
 		}
 	}()
 
@@ -96,4 +102,16 @@ func TestStaleSocketIsReplaced(t *testing.T) {
 		t.Fatalf("Listen over stale file: %v", err)
 	}
 	ln.Close()
+}
+
+func TestAuthorizedFailsClosed(t *testing.T) {
+	if Authorized(&net.UnixAddr{Name: "x", Net: "unix"}) {
+		t.Error("plain address was authorized")
+	}
+	if Authorized(PeerAddr{Allowed: false}) {
+		t.Error("disallowed peer was authorized")
+	}
+	if !Authorized(PeerAddr{Allowed: true}) {
+		t.Error("allowed peer was rejected")
+	}
 }

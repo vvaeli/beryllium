@@ -5,6 +5,7 @@ package ipc
 import (
 	"errors"
 	"log/slog"
+	"net"
 )
 
 // ErrAlreadyRunning is returned by Listen when another daemon already
@@ -23,3 +24,29 @@ type Access struct {
 	// Logger receives rejected-connection warnings (unix). Defaults to slog.Default().
 	Logger *slog.Logger
 }
+
+// PeerAddr is the RemoteAddr of every connection returned by a Listen
+// listener. It carries the verified peer identity so the API layer can
+// answer unauthorized peers with a proper error instead of a dropped
+// connection.
+type PeerAddr struct {
+	net.Addr
+	// UID of the peer (Linux, macOS).
+	UID uint32
+	// Allowed is the access decision for this peer.
+	Allowed bool
+}
+
+// Authorized reports whether a connection whose RemoteAddr is a may use the
+// API. It fails closed: addresses not produced by Listen are rejected.
+func Authorized(a net.Addr) bool {
+	p, ok := a.(PeerAddr)
+	return ok && p.Allowed
+}
+
+type peerConn struct {
+	net.Conn
+	peer PeerAddr
+}
+
+func (c peerConn) RemoteAddr() net.Addr { return c.peer }

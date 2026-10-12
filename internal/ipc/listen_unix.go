@@ -16,8 +16,9 @@ import (
 	"time"
 )
 
-// Listen creates the unix socket at addr. Peers are checked on Accept using
-// kernel-provided credentials; rejected connections are closed immediately.
+// Listen creates the unix socket at addr. Peers are identified on Accept
+// using kernel-provided credentials, and the decision is exposed through
+// PeerAddr (see Authorized).
 func Listen(addr string, a Access) (net.Listener, error) {
 	// sun_path is 104 bytes on macOS and 108 on Linux, including the NUL.
 	if len(addr) >= 104 {
@@ -83,18 +84,16 @@ type peerListener struct {
 }
 
 func (l *peerListener) Accept() (net.Conn, error) {
-	for {
-		c, err := l.AcceptUnix()
-		if err != nil {
-			return nil, err
-		}
-		uid, gids, err := peerCred(c)
-		if err == nil && l.allowed(uid, gids) {
-			return c, nil
-		}
-		l.access.logger().Warn("ipc: rejected connection", "uid", uid, "err", err)
-		c.Close()
+	c, err := l.AcceptUnix()
+	if err != nil {
+		return nil, err
 	}
+	uid, gids, err := peerCred(c)
+	allowed := err == nil && l.allowed(uid, gids)
+	if !allowed {
+		l.access.logger().Warn("ipc: unauthorized peer", "uid", uid, "err", err)
+	}
+	return peerConn{Conn: c, peer: PeerAddr{Addr: c.RemoteAddr(), UID: uid, Allowed: allowed}}, nil
 }
 
 func (l *peerListener) allowed(uid uint32, gids []uint32) bool {

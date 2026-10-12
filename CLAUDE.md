@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Phases 0–2 (scaffolding, proto API, daemon skeleton) are done; everything else is design agreed with the user before implementation. `ROADMAP.md` is the step-by-step plan from empty repo to 1.0, with numbered steps (e.g. `7.10`): follow its order, tick `[x]` when a step is done, and reference step numbers in commits. 
+Phases 0–3 (scaffolding, proto API, daemon skeleton, minimal CLI) are done; everything else is design agreed with the user before implementation. `ROADMAP.md` is the step-by-step plan from empty repo to 1.0, with numbered steps (e.g. `7.10`): follow its order, tick `[x]` when a step is done, and reference step numbers in commits. 
 
 ## Commands
 
@@ -55,10 +55,16 @@ Beryllium is a cross-platform desktop proxy/VPN client for Arch Linux, macOS and
 
 - The subscription URL is a secret: never commit it, log it in full, or paste it into tooling output.
 
+## Frontend plumbing
+
+- `internal/client`: one `Client` with a stub per service. `Client.Explain(err)` turns Unavailable, PermissionDenied and Unimplemented into `*client.Error{Msg, Hint}` by probing the socket directly. Every frontend should pass RPC errors through it
+- `internal/cli`: cobra commands on an `app` with global `--socket` (env `BERYLLIUM_SOCKET`), `--json` and `--timeout`. `app.call` wraps dial + timeout + Explain. Commands support `--json`. `cli.Run(args, out, errOut)` is the test entry point; tests start a real daemon on a temp socket
+- For local dev: `just run-daemon`, then `BERYLLIUM_SOCKET=.dev/d.sock go run ./cmd/beryl …`
+
 ## Daemon internals
 
 - `internal/daemon` wires everything: `Daemon.Run` listens on IPC, serves gRPC and stops on ctx cancel or the `Shutdown` RPC. Services not yet implemented embed `Unimplemented*Server`. `cmd/berylliumd` adapts it to kardianos/service (`install|uninstall|start|stop|restart|status`). When Run ends on its own, the process exits so the service manager's restart policy applies
-- `internal/ipc`: unix socket (Linux/macOS) or named pipe (Windows). Access is enforced per connection by kernel peer credentials (SO_PEERCRED / LOCAL_PEERCRED) or by the pipe's SDDL. Always allowed: root/SYSTEM/Admins and the daemon's own user; also uids/SIDs in `daemon.json` (written by `install` from SUDO_UID or the elevated user), plus the `beryllium` group on Linux. Unix socket paths must be under 104 bytes
+- `internal/ipc`: unix socket (Linux/macOS) or named pipe (Windows). Unix peers are identified by kernel credentials (SO_PEERCRED / LOCAL_PEERCRED). The decision travels as `ipc.PeerAddr` (the conn's RemoteAddr), and gRPC interceptors in `internal/daemon/auth.go` reject unauthorized peers with `PermissionDenied`, so clients can show a hint instead of a dropped connection. `ipc.Authorized` fails closed. On Windows the pipe's SDDL enforces access. Always allowed: root/SYSTEM/Admins and the daemon's own user; also uids/SIDs in `daemon.json` (written by `install` from SUDO_UID or the elevated user), plus the `beryllium` group on Linux. Unix socket paths must be under 104 bytes
 - `internal/redact.ReplaceAttr` is installed on every slog handler. Any new log sink must use it so subscription URLs, share links and UUIDs are masked
 - `internal/store.Store[T]`: versioned JSON (`{"schema_version", "data"}`) with atomic temp+rename writes and mode 0600. A schema change means appending a `Migration`, never editing old ones
 - OS-specific code is split by filename suffix (`_linux.go`, `_darwin.go`, `_windows.go`) or `//go:build linux || darwin`

@@ -2,11 +2,11 @@
 package main
 
 import (
-	"fmt"
+	"os"
 
-	"github.com/vvaeli/beryllium/internal/version"
+	"github.com/vvaeli/beryllium/internal/cli"
 )
 
 func main() {
-	fmt.Println("beryl", version.String())
+	os.Exit(cli.Execute())
 }

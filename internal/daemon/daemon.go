@@ -61,7 +61,10 @@ func (d *Daemon) Run(ctx context.Context) error {
 		return err
 	}
 
-	srv := grpc.NewServer()
+	srv := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(authUnary),
+		grpc.ChainStreamInterceptor(authStream),
+	)
 	d.register(srv)
 
 	serveErr := make(chan error, 1)
