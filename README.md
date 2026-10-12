@@ -10,8 +10,8 @@
 
 ## Возможности
 
-- **Любые протоколы из подписки:** VLESS (Reality, XHTTP и др.), VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard
-- **Несколько ядер:** [sing-box](https://github.com/SagerNet/sing-box) и [Xray](https://github.com/XTLS/Xray-core). Для каждого сервера автоматически выбирается подходящее ядро, его можно переопределить вручную
+- **Любые протоколы из подписки:** VLESS (Reality, XHTTP и др.), VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard, **AmneziaWG**
+- **Несколько ядер:** [sing-box](https://github.com/SagerNet/sing-box), [Xray](https://github.com/XTLS/Xray-core) и [mihomo](https://github.com/MetaCubeX/mihomo) (для AmneziaWG). Для каждого сервера автоматически выбирается подходящее ядро, его можно переопределить вручную
 - **Два режима:** TUN (весь трафик системы) и системный прокси, переключаются на лету
 - **Переживает сон и смену сети:** ждёт готовности сети после пробуждения, сбрасывает мёртвые соединения и DNS-кеш; постоянный watchdog с автоматическим восстановлением и переключением на резервный сервер
 - **Маршрутизация:** RU-сайты и локальная сеть напрямую, пользовательские правила, раздельное туннелирование по приложениям
@@ -34,14 +34,14 @@
          │  сон/сеть        │
          └───┬─────────┬────┘
              │         │       отдельные процессы
-       ┌─────▼───┐ ┌───▼────┐
-       │sing-box │→│  Xray  │  sing-box держит TUN, Xray подключается через SOCKS
-       └─────────┘ └────────┘
+       ┌─────▼───┐ ┌───▼───────────┐
+       │sing-box │→│ Xray / mihomo │  sing-box держит TUN, остальные ядра — через SOCKS
+       └─────────┘ └───────────────┘
 ```
 
 - **`berylliumd`** — привилегированный демон: управляет ядрами, подписками и туннелем. VPN продолжает работать при закрытом GUI.
 - **`beryl`** — CLI и TUI в одном бинарнике.
-- **Beryllium.app / .exe / AppImage** — графический клиент с треем.
+- **Beryllium.app / .exe / нативные пакеты Linux** — графический клиент с треем.
 
 ## Установка
 
@@ -49,7 +49,8 @@
 
 | ОС | Способ |
 |---|---|
-| Arch Linux | `yay -S beryllium-bin` (GUI) или `yay -S beryllium-cli` (только CLI/TUI) |
+| Arch Linux | `yay -S beryllium-bin` (GUI) / `yay -S beryllium-cli` (только CLI/TUI), или `sudo pacman -U beryllium-*.pkg.tar.zst` из [Releases](../../releases) |
+| Debian / Ubuntu, Fedora | `.deb` / `.rpm` из [Releases](../../releases) |
 | macOS | `brew install --cask vvaeli/tap/beryllium` или `.dmg` из [Releases](../../releases) |
 | Windows | установщик `.exe` из [Releases](../../releases), `winget` / `scoop` |
 
@@ -96,4 +97,4 @@ just test          # тесты
 
 ## Лицензия
 
-[GPL-3.0](LICENSE). Ядра распространяются под своими лицензиями: sing-box — GPL-3.0, Xray — MPL-2.0.
+[GPL-3.0](LICENSE). Ядра распространяются под своими лицензиями: sing-box и mihomo — GPL-3.0, Xray — MPL-2.0.

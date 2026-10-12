@@ -48,9 +48,9 @@
 ## Фаза 1. API демона (proto)
 
 - [ ] 1.1 Настроить `buf`: `buf.yaml`, `buf.gen.yaml` (Go: `protoc-gen-go` + `protoc-gen-go-grpc`)
-- [ ] 1.2 `common.proto`: `Empty`, `Error`, перечисления `Mode` (TUN / SYSTEM_PROXY), `CoreKind` (AUTO / SING_BOX / XRAY / MIHOMO), `Protocol`
+- [ ] 1.2 `common.proto`: `Empty`, `Error`, перечисления `Mode` (TUN / SYSTEM_PROXY), `CoreKind` (AUTO / SING_BOX / XRAY / MIHOMO), `Protocol` (включая WIREGUARD и AMNEZIAWG)
 - [ ] 1.3 `subscription.proto`: `Subscription` (id, name, url, updated_at, traffic used/total, expire_at, auto_update_interval), `Server` (id, name, protocol, transport, address, port, country, latency)
-- [ ] 1.4 `SubscriptionService`: `Add(url, name)`, `List`, `Remove(id)`, `Rename`, `Refresh(id)`, `RefreshAll`, `ListServers(sub_id)`
+- [ ] 1.4 `SubscriptionService`: `Add(url, name)`, `List`, `Remove(id)`, `Rename`, `Refresh(id)`, `RefreshAll`, `ListServers(sub_id)`, `ImportConfig(file|uri)` для одиночных конфигов (например, AWG `.conf`)
 - [ ] 1.5 `connection.proto`, `ConnectionService`: `Connect(server_id | auto, mode, core)`, `Disconnect`, `Status`, `WatchStatus` (server stream: состояния, текущий сервер, ядро, скорость, uptime)
 - [ ] 1.6 `TestService`: `PingServers(ids)` (stream), `UrlTest`
 - [ ] 1.7 `settings.proto`, `SettingsService`: `Get`, `Update` (режим, правила маршрутизации, DNS, автозапуск, kill switch, интервал watchdog)
@@ -111,13 +111,15 @@
 - [ ] 4.9 Парсер `hysteria2://` / `hy2://`: obfs, пароль, sni, insecure, порт-хоппинг
 - [ ] 4.10 Парсер `tuic://`
 - [ ] 4.11 Парсер `wireguard://`
-- [ ] 4.12 Импорт Clash YAML и sing-box JSON во внутреннюю модель
-- [ ] 4.13 Неизвестные или битые записи пропускаются с предупреждением, остальная подписка продолжает работать
-- [ ] 4.14 Определение страны сервера: по флагу-эмодзи в имени или по GeoIP
-- [ ] 4.15 Фикстуры (обезличенные примеры подписок) и табличные тесты на каждый парсер, плюс fuzz-тесты (`go test -fuzz`) на парсеры URI
-- [ ] 4.16 `SubscriptionService` полностью: add, list, remove, rename, refresh
-- [ ] 4.17 Фоновое автообновление по интервалу (берётся из заголовка или задаётся пользователем); при ошибке остаётся последняя рабочая версия
-- [ ] 4.18 CLI: `beryl sub add <url> [--name]`, `beryl sub ls`, `beryl sub rm`, `beryl sub update [id|--all]`, `beryl servers [sub]`
+- [ ] 4.12 AmneziaWG: модель WireGuard плюс параметры обфускации (`Jc`, `Jmin`, `Jmax`, `S1`–`S4`, `H1`–`H4`, `I1`–`I5`, т.е. AWG 1.x и 2.0). Импорт из `.conf` (формат wg-quick с полями AWG) и из ссылок `awg://` и `vpn://` (формат Amnezia: base64 + сжатый JSON)
+- [ ] 4.13 Импорт отдельного конфига (не только подписки): файл `.conf` / `.json` / одиночная ссылка через `SubscriptionService.ImportConfig` и `beryl import <file|uri>`
+- [ ] 4.14 Импорт Clash YAML и sing-box JSON во внутреннюю модель
+- [ ] 4.15 Неизвестные или битые записи пропускаются с предупреждением, остальная подписка продолжает работать
+- [ ] 4.16 Определение страны сервера: по флагу-эмодзи в имени или по GeoIP
+- [ ] 4.17 Фикстуры (обезличенные примеры подписок) и табличные тесты на каждый парсер, плюс fuzz-тесты (`go test -fuzz`) на парсеры URI
+- [ ] 4.18 `SubscriptionService` полностью: add, list, remove, rename, refresh
+- [ ] 4.19 Фоновое автообновление по интервалу (берётся из заголовка или задаётся пользователем); при ошибке остаётся последняя рабочая версия
+- [ ] 4.20 CLI: `beryl sub add <url> [--name]`, `beryl sub ls`, `beryl sub rm`, `beryl sub update [id|--all]`, `beryl servers [sub]`
 
 **Готово, когда:** реальная подписка добавляется через CLI, и все её серверы видны с правильными протоколами.
 
@@ -125,19 +127,20 @@
 
 ## Фаза 5. Менеджер ядер
 
-- [ ] 5.1 `cores/versions.json`: закреплённые версии sing-box и Xray, URL и SHA-256 для каждой пары ОС/архитектура (amd64, arm64)
+- [ ] 5.1 `cores/versions.json`: закреплённые версии sing-box, Xray и mihomo, URL и SHA-256 для каждой пары ОС/архитектура (amd64, arm64)
 - [ ] 5.2 Скрипт `just fetch-cores`: скачивает бинарники в `cores/bin/<os>-<arch>/` и проверяет контрольные суммы
 - [ ] 5.3 Интерфейс `Core` (`internal/core`): `Name`, `Capabilities`, `Start(cfg)`, `Stop`, `HealthCheck`, `Stats`
 - [ ] 5.4 Супервизор процессов: запуск, перехват stdout/stderr в `LogService`, обнаружение падения, перезапуск с backoff, kill по таймауту. 🐧 `Pdeathsig`, 🪟 Job Object, чтобы ядра не оставались сиротами
 - [ ] 5.5 Выделение свободных локальных портов, inbound'ы слушают только `127.0.0.1`
 - [ ] 5.6 Транслятор модели в конфиг **sing-box**: outbound на каждый протокол, inbound mixed (socks + http)
 - [ ] 5.7 Транслятор модели в конфиг **Xray**: outbound на каждый протокол, inbound socks
-- [ ] 5.8 Golden-тесты трансляторов: модель → ожидаемый JSON, а также `sing-box check` и `xray -test` в CI
-- [ ] 5.9 Clash API у sing-box и stats API у Xray для скорости и трафика
-- [ ] 5.10 Матрица возможностей: протокол + транспорт → список ядер в порядке приоритета (например `xhttp → [xray]`, `hysteria2 → [sing-box]`, `vless+reality+tcp → [sing-box, xray]`)
-- [ ] 5.11 Выбор ядра в режиме `AUTO` по матрице, ручное переопределение пользователем
-- [ ] 5.12 Цепочка: sing-box держит TUN или mixed inbound, а outbound `socks → 127.0.0.1:N` ведёт в Xray, если сервер требует Xray
-- [ ] 5.13 Интеграционный тест: локальный тестовый сервер (sing-box/Xray-сервер в Docker с VLESS+Reality, Hysteria2, XHTTP) и проверка, что через клиента проходит HTTP-запрос
+- [ ] 5.8 Транслятор модели в конфиг **mihomo** (YAML): outbound `wireguard` с `amnezia-wg-option` для AmneziaWG, inbound mixed. Сначала проверить, какие параметры AWG 2.0 поддерживает текущая версия mihomo. Если не все — встроить `amneziawg-go` с userspace-стеком (netstack) как отдельное мини-ядро
+- [ ] 5.9 Golden-тесты трансляторов: модель → ожидаемый JSON/YAML, а также `sing-box check`, `xray -test` и `mihomo -t` в CI
+- [ ] 5.10 Clash API у sing-box и mihomo, stats API у Xray для скорости и трафика
+- [ ] 5.11 Матрица возможностей: протокол + транспорт → список ядер в порядке приоритета (например `xhttp → [xray]`, `hysteria2 → [sing-box]`, `amneziawg → [mihomo]`, `vless+reality+tcp → [sing-box, xray]`)
+- [ ] 5.12 Выбор ядра в режиме `AUTO` по матрице, ручное переопределение пользователем
+- [ ] 5.13 Цепочка: sing-box держит TUN или mixed inbound, а outbound `socks → 127.0.0.1:N` ведёт в Xray или mihomo, если сервер требует их
+- [ ] 5.14 Интеграционный тест: локальный тестовый сервер (sing-box/Xray-сервер в Docker с VLESS+Reality, Hysteria2, XHTTP, плюс сервер AmneziaWG) и проверка, что через клиента проходит HTTP-запрос
 
 **Готово, когда:** любой сервер из подписки поднимается правильным ядром в виде локального прокси.
 
@@ -253,7 +256,7 @@
 - [ ] 9.17 Тёмная и светлая тема по системной
 
 ### 9D. Интеграция с ОС
-- [ ] 9.18 Установка демона из GUI с повышением прав: 🍎 `osascript … with administrator privileges`, 🪟 UAC (`runas`), 🐧 `pkexec`
+- [ ] 9.18 Установка и восстановление демона из GUI с повышением прав: 🍎 `osascript … with administrator privileges`, 🪟 UAC (`runas`). 🐧 демон ставится пакетом (10.9), GUI только подсказывает `systemctl enable --now berylliumd`
 - [ ] 9.19 Автозапуск GUI при входе (`tauri-plugin-autostart`)
 - [ ] 9.20 Системные уведомления: подключено, восстановлено после обрыва, подписка истекает, трафик заканчивается
 - [ ] 9.21 Глобальная горячая клавиша вкл/выкл (`tauri-plugin-global-shortcut`)
@@ -268,13 +271,21 @@
 
 - [ ] 10.1 `goreleaser` для `berylliumd` и `beryl`: linux/darwin/windows × amd64/arm64. 🍎 сборка с cgo на macOS-раннере, universal binary через `lipo`
 - [ ] 10.2 Встраивание версии (`-ldflags -X`), коммита и даты сборки
-- [ ] 10.3 Tauri bundle: 🍎 `.app` + `.dmg`, 🪟 NSIS `.exe`, 🐧 AppImage (+ `.deb` опционально)
+- [ ] 10.3 Tauri bundle: 🍎 `.app` + `.dmg`, 🪟 NSIS `.exe`. 🐧 **без AppImage**: GUI собирается обычным бинарником и попадает в нативные пакеты (10.9), webkit2gtk берётся из системы как зависимость
 - [ ] 10.4 Укладка демона и ядер в бандл GUI (`externalBin` / resources), первая установка службы из GUI
 - [ ] 10.5 🍎 без Apple Developer: ad-hoc подпись `codesign -s -`, в README инструкция про `xattr -dr com.apple.quarantine` или «Открыть» из контекстного меню
 - [ ] 10.6 🍎 Homebrew cask в своём tap (`brew install --cask vvaeli/tap/beryllium`) — снимает часть проблем с карантином
 - [ ] 10.7 🪟 установщик NSIS: регистрирует службу, создаёт ярлыки, при удалении останавливает службу и чистит прокси. Предупреждение SmartScreen задокументировать (подпись кода — опционально позже)
 - [ ] 10.8 🪟 пакет для `winget` и/или `scoop`
-- [ ] 10.9 🐧 `PKGBUILD` для AUR: `beryllium-bin` (готовые бинарники) и `beryllium-git` (сборка из исходников); `.install`-хук создаёт группу `beryllium` и включает службу
+- [ ] 10.9 🐧 Нативные пакеты через `nfpm` (из goreleaser) с одной раскладкой файлов для всех форматов:
+  - `/usr/bin/{berylliumd,beryl,beryllium}`, ядра в `/usr/lib/beryllium/cores/`
+  - `/usr/lib/systemd/system/berylliumd.service`, группа через `/usr/lib/sysusers.d/beryllium.conf`
+  - `.desktop`-файл и иконки в `/usr/share/`, автодополнение для bash/zsh/fish
+  - зависимости: `webkit2gtk-4.1`, `gtk3`, `libayatana-appindicator`
+- [ ] 10.9.1 🐧 Arch: `.pkg.tar.zst` в каждом релизе (`makepkg` в контейнере `archlinux` в CI), установка через `sudo pacman -U`
+- [ ] 10.9.2 🐧 Debian/Ubuntu `.deb` и Fedora/openSUSE `.rpm` из тех же файлов
+- [ ] 10.9.3 🐧 Скрипты пакета: post-install — `systemd-sysusers`, `systemctl daemon-reload`, подсказка `usermod -aG beryllium $USER`; pre-remove — остановить службу и вернуть системный прокси
+- [ ] 10.9.4 🐧 AUR: `beryllium-bin` (готовые бинарники) и `beryllium-git` (сборка из исходников); `.install`-хук создаёт группу `beryllium` и включает службу
 - [ ] 10.10 Пакет только с CLI и TUI (без GUI) для всех ОС: архив + `beryllium-cli` в AUR
 - [ ] 10.11 Полное удаление: служба, файлы, группа, маркеры прокси, маршруты; на каждой ОС проверено вручную
 - [ ] 10.12 GitHub Actions release workflow: по тегу `v*` собирает всё, считает SHA-256 и создаёт draft-релиз с changelog
@@ -286,12 +297,12 @@
 
 ## Фаза 11. Мульти-ядро: автовыбор и Xray в TUN
 
-- [ ] 11.1 Полностью проверить связку TUN (sing-box) → socks → Xray для XHTTP-серверов, включая сценарии сна
+- [ ] 11.1 Полностью проверить связки TUN (sing-box) → socks → Xray (XHTTP) и → mihomo (AmneziaWG), включая сценарии сна
 - [ ] 11.2 Фоновые замеры, когда сервер поддерживают несколько ядер: задержка, стабильность, скорость на небольшом объёме. Сохранять победителя по каждому серверу
 - [ ] 11.3 Автовыбор ядра по матрице и замерам, отображение «почему выбрано это ядро» в GUI/TUI/CLI
 - [ ] 11.4 Автовыбор сервера (urltest-группа) с гистерезисом, чтобы не прыгать между серверами из-за шума
 - [ ] 11.5 Переключение на другой сервер и ядро как ступень лестницы восстановления (7.4)
-- [ ] 11.6 Опционально: mihomo как третье ядро, только если выявится протокол или функция, которой нет у первых двух
+- [ ] 11.6 Не добавлять новые ядра сверх sing-box / Xray / mihomo, пока не появится протокол, которого нет ни в одном из них
 
 ---
 
@@ -314,7 +325,7 @@
 - [ ] 13.2 `tauri-plugin-updater`: проверка `latest.json` в GitHub Releases, установка с подтверждением пользователя
 - [ ] 13.3 Обновление демона вместе с GUI: остановить службу → заменить → запустить, при ошибке откатиться
 - [ ] 13.4 Обновление CLI-only сборки: `beryl self-update` (с проверкой подписи, например minisign)
-- [ ] 13.5 Обновление ядер отдельно от приложения: новые версии сначала проходят CI с интеграционными тестами 5.13, затем публикуется манифест
+- [ ] 13.5 Обновление ядер отдельно от приложения: новые версии сначала проходят CI с интеграционными тестами 5.14, затем публикуется манифест
 - [ ] 13.6 Каналы `stable` / `beta`
 
 **Готово, когда:** обновление со старой версии на новую проходит без ручных действий на трёх ОС. **Тег `v0.5.0` — веха M3 (бета).**

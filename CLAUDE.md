@@ -19,7 +19,7 @@ Planned layout: `proto/beryllium/v1/` (API), `gen/go/`, `cmd/berylliumd/` (daemo
 
 ## Project
 
-Beryllium is a cross-platform desktop proxy/VPN client for Arch Linux, macOS and Windows. It imports a subscription link that can contain any protocol (VLESS+Reality, XHTTP, Hysteria2, TUIC, Trojan, SS, ...). The main motivation is reliability: the previous client (Incy) intermittently loses the tunnel after macOS sleep. Surviving sleep/wake and network changes is a core requirement, not a nice-to-have.
+Beryllium is a cross-platform desktop proxy/VPN client for Arch Linux, macOS and Windows. It imports a subscription link that can contain any protocol (VLESS+Reality, XHTTP, Hysteria2, TUIC, Trojan, SS, WireGuard, AmneziaWG, ...). The main motivation is reliability: the previous client (Incy) intermittently loses the tunnel after macOS sleep. Surviving sleep/wake and network changes is a core requirement, not a nice-to-have.
 
 ## Planned architecture
 
@@ -36,9 +36,9 @@ Beryllium is a cross-platform desktop proxy/VPN client for Arch Linux, macOS and
 
 - Cores run as **separate subprocesses**, not embedded libraries. sing-box and Xray depend on conflicting versions of shared modules (quic-go, utls), and process isolation means a core crash cannot take down the daemon.
 - Cores sit behind a common `Core` interface (Start/Stop/HealthCheck/Stats), with one config translator per core.
-- **sing-box always owns TUN.** Other cores (Xray, later possibly mihomo) expose a local SOCKS inbound, and sing-box routes TUN traffic to it. Sleep/DNS/route handling therefore lives in one place.
+- **sing-box always owns TUN.** Other cores (Xray, mihomo) expose a local SOCKS inbound, and sing-box routes TUN traffic to it. Sleep/DNS/route handling therefore lives in one place.
 - Core selection: first a capability matrix (e.g. XHTTP → Xray only; Hysteria2/TUIC → sing-box), then measured latency/stability when several cores qualify. The user can override the choice manually.
-- Core set: sing-box (primary), Xray (XHTTP, newest VLESS/Reality features), mihomo optional later. Don't add cores that offer nothing beyond these.
+- Core set: sing-box (primary), Xray (XHTTP, newest VLESS/Reality features), mihomo (AmneziaWG, via `amnezia-wg-option`). Don't add cores that offer nothing beyond these.
 
 ### Sleep/wake and network-change recovery (macOS-critical)
 
@@ -51,3 +51,7 @@ Beryllium is a cross-platform desktop proxy/VPN client for Arch Linux, macOS and
 ## Conventions
 
 - The subscription URL is a secret: never commit it, log it in full, or paste it into tooling output.
+
+## Packaging
+
+Linux ships only as native packages (Arch `.pkg.tar.zst` + AUR, `.deb`, `.rpm` via nfpm), never AppImage. Each package installs the daemon, systemd unit, sysusers group, cores and GUI (ROADMAP 10.9).
