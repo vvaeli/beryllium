@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package beryllium.v1;
+
+import "beryllium/v1/common.proto";
+import "beryllium/v1/subscription.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+service ConnectionService {
+  rpc Connect(ConnectRequest) returns (ConnectResponse);
+  rpc Disconnect(DisconnectRequest) returns (DisconnectResponse);
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+  // Sends the current status immediately, then on every change and
+  // periodically while connected (traffic counters).
+  rpc WatchStatus(WatchStatusRequest) returns (stream WatchStatusResponse);
+}
+
+enum ConnectionState {
+  CONNECTION_STATE_UNSPECIFIED = 0;
+  CONNECTION_STATE_DISCONNECTED = 1;
+  CONNECTION_STATE_CONNECTING = 2;
+  CONNECTION_STATE_CONNECTED = 3;
+  // Health checks are failing but recovery has not started yet.
+  CONNECTION_STATE_DEGRADED = 4;
+  CONNECTION_STATE_RECOVERING = 5;
+  // Recovery ladder exhausted; user action needed.
+  CONNECTION_STATE_FAILED = 6;
+  CONNECTION_STATE_DISCONNECTING = 7;
+}
+
+enum RecoveryTrigger {
+  RECOVERY_TRIGGER_UNSPECIFIED = 0;
+  RECOVERY_TRIGGER_WATCHDOG = 1;
+  RECOVERY_TRIGGER_WAKE = 2;
+  RECOVERY_TRIGGER_NETWORK_CHANGE = 3;
+  RECOVERY_TRIGGER_CORE_EXITED = 4;
+}
+
+message ConnectRequest {
+  // Empty means auto-select the best server.
+  string server_id = 1;
+  // Restricts auto-select to one subscription; ignored when server_id is set.
+  string subscription_id = 2;
+  // UNSPECIFIED uses the mode from settings.
+  Mode mode = 3;
+  CoreKind core = 4;
+}
+
+message ConnectResponse {
+  ConnectionStatus status = 1;
+}
+
+message DisconnectRequest {}
+
+message DisconnectResponse {
+  ConnectionStatus status = 1;
+}
+
+message GetStatusRequest {}
+
+message GetStatusResponse {
+  ConnectionStatus status = 1;
+}
+
+message WatchStatusRequest {}
+
+message WatchStatusResponse {
+  ConnectionStatus status = 1;
+}
+
+message ConnectionStatus {
+  ConnectionState state = 1;
+  Mode mode = 2;
+  Server server = 3;
+  CoreKind core = 4;
+  // Why the daemon chose this core, e.g. "xhttp is supported only by xray".
+  string core_reason = 5;
+  google.protobuf.Timestamp connected_since = 6;
+  TrafficStats traffic = 7;
+  RecoveryStats recovery = 8;
+  // Set in FAILED state.
+  ErrorDetail error = 9;
+}
+
+message TrafficStats {
+  uint64 upload_bytes_per_sec = 1;
+  uint64 download_bytes_per_sec = 2;
+  uint64 upload_bytes_total = 3;
+  uint64 download_bytes_total = 4;
+}
+
+message RecoveryStats {
+  // Recoveries since connect.
+  uint32 count = 1;
+  RecoveryTrigger last_trigger = 2;
+  google.protobuf.Timestamp last_at = 3;
+  google.protobuf.Duration last_duration = 4;
+}

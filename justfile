@@ -2,14 +2,16 @@ set windows-shell := ["pwsh", "-NoLogo", "-Command"]
 
 version := `git describe --tags --always --dirty 2>/dev/null || echo dev`
 commit := `git rev-parse --short HEAD 2>/dev/null || echo none`
+buf := "go tool -modfile=tools/go.mod buf"
 ldflags := "-s -w -X github.com/vvaeli/beryllium/internal/version.Version=" + version + " -X github.com/vvaeli/beryllium/internal/version.Commit=" + commit
 
 default:
     @just --list
 
-# Generate code from proto (phase 1)
+# Generate Go code from proto into gen/go
 gen:
-    buf generate
+    {{buf}} format -w
+    {{buf}} generate
 
 # Build daemon and CLI into ./bin
 build:
@@ -19,11 +21,17 @@ test:
     go test -race ./...
 
 lint:
+    {{buf}} lint
     golangci-lint run
     gofmt -l . | (! grep .)
 
 fmt:
     gofmt -w .
+    {{buf}} format -w
+
+# Check proto changes for breaking changes against main
+breaking:
+    {{buf}} breaking --against '.git#branch=main'
 
 run-daemon *args:
     go run ./cmd/berylliumd {{args}}

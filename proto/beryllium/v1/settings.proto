@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package beryllium.v1;
+
+import "beryllium/v1/common.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/field_mask.proto";
+
+service SettingsService {
+  rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse);
+  // Applies the fields in update_mask; an active connection is reconfigured
+  // in place when possible.
+  rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse);
+}
+
+enum RoutingPreset {
+  ROUTING_PRESET_UNSPECIFIED = 0;
+  ROUTING_PRESET_PROXY_ALL = 1;
+  // Russian domains/IPs go direct, everything else through the proxy.
+  ROUTING_PRESET_BYPASS_RU = 2;
+  // Only known-blocked resources go through the proxy.
+  ROUTING_PRESET_BLOCKED_ONLY = 3;
+}
+
+enum RuleMatch {
+  RULE_MATCH_UNSPECIFIED = 0;
+  RULE_MATCH_DOMAIN = 1;
+  RULE_MATCH_DOMAIN_SUFFIX = 2;
+  RULE_MATCH_DOMAIN_KEYWORD = 3;
+  RULE_MATCH_IP_CIDR = 4;
+  RULE_MATCH_PROCESS_NAME = 5;
+  RULE_MATCH_PROCESS_PATH = 6;
+}
+
+enum RuleAction {
+  RULE_ACTION_UNSPECIFIED = 0;
+  RULE_ACTION_PROXY = 1;
+  RULE_ACTION_DIRECT = 2;
+  RULE_ACTION_BLOCK = 3;
+}
+
+enum Ipv6Mode {
+  IPV6_MODE_UNSPECIFIED = 0;
+  IPV6_MODE_TUNNEL = 1;
+  // Drop IPv6 to prevent leaks when the server has no IPv6.
+  IPV6_MODE_BLOCK = 2;
+}
+
+enum LogLevel {
+  LOG_LEVEL_UNSPECIFIED = 0;
+  LOG_LEVEL_DEBUG = 1;
+  LOG_LEVEL_INFO = 2;
+  LOG_LEVEL_WARN = 3;
+  LOG_LEVEL_ERROR = 4;
+}
+
+message Settings {
+  Mode mode = 1;
+  CoreKind preferred_core = 2;
+  RoutingSettings routing = 3;
+  DnsSettings dns = 4;
+  WatchdogSettings watchdog = 5;
+  // Block traffic outside the tunnel while recovering or failed (TUN only).
+  bool kill_switch = 6;
+  // Default for subscriptions that don't send profile-update-interval.
+  google.protobuf.Duration subscription_update_interval = 7;
+  LogLevel log_level = 8;
+}
+
+message RoutingSettings {
+  RoutingPreset preset = 1;
+  // Evaluated in order, before the preset.
+  repeated RoutingRule rules = 2;
+}
+
+message RoutingRule {
+  RuleMatch match = 1;
+  string value = 2;
+  RuleAction action = 3;
+}
+
+message DnsSettings {
+  // DoH URL used for proxied domains.
+  string remote_dns = 1;
+  // Resolver for direct domains; empty uses the system resolver.
+  string direct_dns = 2;
+  bool fake_ip = 3;
+  Ipv6Mode ipv6 = 4;
+}
+
+message WatchdogSettings {
+  google.protobuf.Duration interval = 1;
+  // Consecutive failed health checks before recovery starts.
+  uint32 failure_threshold = 2;
+}
+
+message GetSettingsRequest {}
+
+message GetSettingsResponse {
+  Settings settings = 1;
+}
+
+message UpdateSettingsRequest {
+  Settings settings = 1;
+  google.protobuf.FieldMask update_mask = 2;
+}
+
+message UpdateSettingsResponse {
+  Settings settings = 1;
+}

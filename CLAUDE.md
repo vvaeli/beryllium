@@ -4,14 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Phase 0 (repo scaffolding) is done; everything else is design agreed with the user before implementation. `ROADMAP.md` is the step-by-step plan from empty repo to 1.0, with numbered steps (e.g. `7.10`): follow its order, tick `[x]` when a step is done, and reference step numbers in commits. 
+Phases 0 (repo scaffolding) and 1 (proto API) are done; everything else is design agreed with the user before implementation. `ROADMAP.md` is the step-by-step plan from empty repo to 1.0, with numbered steps (e.g. `7.10`): follow its order, tick `[x]` when a step is done, and reference step numbers in commits. 
 
 ## Commands
 
 - `just build` builds `berylliumd` and `beryl` into `bin/` (version is injected via ldflags into `internal/version`)
 - `just test` runs `go test -race ./...`; for a single test, `go test -run TestName ./internal/<pkg>`
 - `just lint` runs golangci-lint (v2 config in `.golangci.yml`; `gen/` is excluded) and checks gofmt
-- `just gen` / `fetch-cores` / `gui-dev` are placeholders until ROADMAP 1.1 / 5.2 / 9.1
+- `just gen` formats protos and regenerates `gen/go` (committed; CI fails if it is stale). `just breaking` checks proto changes against `main`
+- buf, protoc-gen-go and protoc-gen-go-grpc are tool deps in the separate `tools/go.mod` module and run via `go tool -modfile=tools/go.mod <tool>`. Don't install them globally, and don't add tool deps to the root `go.mod`
+- `just fetch-cores` / `gui-dev` are placeholders until ROADMAP 5.2 / 9.1
 
 Module path: `github.com/vvaeli/beryllium`. License: GPL-3.0.
 
@@ -51,6 +53,10 @@ Beryllium is a cross-platform desktop proxy/VPN client for Arch Linux, macOS and
 ## Conventions
 
 - The subscription URL is a secret: never commit it, log it in full, or paste it into tooling output.
+
+## API (proto)
+
+`proto/beryllium/v1/*.proto` is the single contract for the daemon and all three frontends. buf STANDARD lint applies: every RPC has its own `<Rpc>Request`/`<Rpc>Response`, and enum values are prefixed with the enum name and start with `_UNSPECIFIED`. Errors are gRPC status codes with `ErrorDetail` (an `ErrorReason`) in the details. Credentials and full subscription URLs never cross the API: `Server` is a public view, and `Subscription` has only `url_masked`.
 
 ## Packaging
 

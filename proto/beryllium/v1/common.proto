@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package beryllium.v1;
+
+// How traffic is captured on the host.
+enum Mode {
+  MODE_UNSPECIFIED = 0;
+  // Virtual interface; captures all system traffic.
+  MODE_TUN = 1;
+  // OS-level HTTP/SOCKS proxy settings; only proxy-aware apps are covered.
+  MODE_SYSTEM_PROXY = 2;
+}
+
+// Proxy core that carries the traffic. UNSPECIFIED is treated as AUTO.
+enum CoreKind {
+  CORE_KIND_UNSPECIFIED = 0;
+  // Daemon picks via the capability matrix and measurements.
+  CORE_KIND_AUTO = 1;
+  CORE_KIND_SING_BOX = 2;
+  CORE_KIND_XRAY = 3;
+  CORE_KIND_MIHOMO = 4;
+}
+
+enum Protocol {
+  PROTOCOL_UNSPECIFIED = 0;
+  PROTOCOL_VLESS = 1;
+  PROTOCOL_VMESS = 2;
+  PROTOCOL_TROJAN = 3;
+  PROTOCOL_SHADOWSOCKS = 4;
+  PROTOCOL_HYSTERIA2 = 5;
+  PROTOCOL_TUIC = 6;
+  PROTOCOL_WIREGUARD = 7;
+  PROTOCOL_AMNEZIAWG = 8;
+}
+
+enum Transport {
+  TRANSPORT_UNSPECIFIED = 0;
+  TRANSPORT_TCP = 1;
+  TRANSPORT_UDP = 2;
+  TRANSPORT_QUIC = 3;
+  TRANSPORT_WS = 4;
+  TRANSPORT_GRPC = 5;
+  TRANSPORT_HTTP2 = 6;
+  TRANSPORT_HTTPUPGRADE = 7;
+  TRANSPORT_XHTTP = 8;
+}
+
+enum Security {
+  SECURITY_UNSPECIFIED = 0;
+  SECURITY_NONE = 1;
+  SECURITY_TLS = 2;
+  SECURITY_REALITY = 3;
+}
+
+// Machine-readable error cause, attached to gRPC status details as ErrorDetail.
+enum ErrorReason {
+  ERROR_REASON_UNSPECIFIED = 0;
+  ERROR_REASON_SUBSCRIPTION_FETCH_FAILED = 1;
+  ERROR_REASON_SUBSCRIPTION_PARSE_FAILED = 2;
+  ERROR_REASON_UNSUPPORTED_CONFIG = 3;
+  // No installed core supports the server's protocol/transport.
+  ERROR_REASON_NO_CORE_FOR_SERVER = 4;
+  ERROR_REASON_CORE_NOT_INSTALLED = 5;
+  ERROR_REASON_CORE_START_FAILED = 6;
+  ERROR_REASON_TUN_SETUP_FAILED = 7;
+  ERROR_REASON_SYSTEM_PROXY_FAILED = 8;
+  ERROR_REASON_NETWORK_UNAVAILABLE = 9;
+  ERROR_REASON_CAPTIVE_PORTAL = 10;
+}
+
+message ErrorDetail {
+  ErrorReason reason = 1;
+  // Human-readable details. Never contains secrets.
+  string message = 2;
+}

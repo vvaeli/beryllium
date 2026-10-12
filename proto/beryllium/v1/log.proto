@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package beryllium.v1;
+
+import "beryllium/v1/common.proto";
+import "beryllium/v1/settings.proto";
+import "google/protobuf/timestamp.proto";
+
+service LogService {
+  // Streams daemon and core logs, optionally starting with recent history.
+  rpc StreamLogs(StreamLogsRequest) returns (stream StreamLogsResponse);
+}
+
+message StreamLogsRequest {
+  LogLevel min_level = 1;
+  // Number of buffered entries to send before live ones.
+  uint32 tail = 2;
+}
+
+message StreamLogsResponse {
+  LogEntry entry = 1;
+}
+
+message LogEntry {
+  google.protobuf.Timestamp time = 1;
+  LogLevel level = 2;
+  // CORE_KIND_UNSPECIFIED means the daemon itself.
+  CoreKind source = 3;
+  // Secrets are masked by the daemon before entries leave it.
+  string message = 4;
+  map<string, string> attrs = 5;
+}

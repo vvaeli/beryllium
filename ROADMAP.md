@@ -47,17 +47,17 @@
 
 ## Фаза 1. API демона (proto)
 
-- [ ] 1.1 Настроить `buf`: `buf.yaml`, `buf.gen.yaml` (Go: `protoc-gen-go` + `protoc-gen-go-grpc`)
-- [ ] 1.2 `common.proto`: `Empty`, `Error`, перечисления `Mode` (TUN / SYSTEM_PROXY), `CoreKind` (AUTO / SING_BOX / XRAY / MIHOMO), `Protocol` (включая WIREGUARD и AMNEZIAWG)
-- [ ] 1.3 `subscription.proto`: `Subscription` (id, name, url, updated_at, traffic used/total, expire_at, auto_update_interval), `Server` (id, name, protocol, transport, address, port, country, latency)
-- [ ] 1.4 `SubscriptionService`: `Add(url, name)`, `List`, `Remove(id)`, `Rename`, `Refresh(id)`, `RefreshAll`, `ListServers(sub_id)`, `ImportConfig(file|uri)` для одиночных конфигов (например, AWG `.conf`)
-- [ ] 1.5 `connection.proto`, `ConnectionService`: `Connect(server_id | auto, mode, core)`, `Disconnect`, `Status`, `WatchStatus` (server stream: состояния, текущий сервер, ядро, скорость, uptime)
-- [ ] 1.6 `TestService`: `PingServers(ids)` (stream), `UrlTest`
-- [ ] 1.7 `settings.proto`, `SettingsService`: `Get`, `Update` (режим, правила маршрутизации, DNS, автозапуск, kill switch, интервал watchdog)
-- [ ] 1.8 `LogService.Stream(level)`: логи демона и ядер в реальном времени
-- [ ] 1.9 `DaemonService`: `Version`, `Health`, `Shutdown`
-- [ ] 1.10 Генерация Go-кода в `gen/go`, цель `just gen`
-- [ ] 1.11 В CI добавить `buf breaking` против `main` (после 1.0 API меняется только обратносовместимо)
+- [x] 1.1 Настроить `buf` (buf и плагины — tool-зависимости в `tools/go.mod`, запуск через `go tool`, глобальная установка не нужна): `buf.yaml`, `buf.gen.yaml` (Go: `protoc-gen-go` + `protoc-gen-go-grpc`)
+- [x] 1.2 `common.proto`: `ErrorDetail` + `ErrorReason` (кладутся в details gRPC-статуса; `Empty` не нужен — по правилам buf у каждого RPC свои Request/Response), перечисления `Mode` (TUN / SYSTEM_PROXY), `CoreKind` (AUTO / SING_BOX / XRAY / MIHOMO), `Protocol` (включая WIREGUARD и AMNEZIAWG)
+- [x] 1.3 `subscription.proto`: `Subscription` (id, name, url, updated_at, traffic used/total, expire_at, auto_update_interval), `Server` (id, name, protocol, transport, address, port, country, latency)
+- [x] 1.4 `SubscriptionService`: `Add(url, name)`, `List`, `Remove(id)`, `Rename`, `Refresh(id)`, `RefreshAll`, `ListServers(sub_id)`, `ImportConfig(file|uri)` для одиночных конфигов (например, AWG `.conf`)
+- [x] 1.5 `connection.proto`, `ConnectionService`: `Connect(server_id | auto, mode, core)`, `Disconnect`, `Status`, `WatchStatus` (server stream: состояния, текущий сервер, ядро, скорость, uptime)
+- [x] 1.6 `TestService`: `PingServers(ids)` (stream), `UrlTest`
+- [x] 1.7 `settings.proto`, `SettingsService`: `Get`, `Update` (режим, правила маршрутизации, DNS, автозапуск, kill switch, интервал watchdog)
+- [x] 1.8 `LogService.Stream(level)`: логи демона и ядер в реальном времени
+- [x] 1.9 `DaemonService`: `Version`, `Health`, `Shutdown`
+- [x] 1.10 Генерация Go-кода в `gen/go`, цель `just gen`
+- [x] 1.11 В CI добавить `buf breaking` против `main` (пока информационно, `continue-on-error`; обязательным станет в 15.5) (после 1.0 API меняется только обратносовместимо)
 
 **Готово, когда:** `buf lint` чист, Go-код генерируется и компилируется.
 

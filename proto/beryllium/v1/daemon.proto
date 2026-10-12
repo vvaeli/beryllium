@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package beryllium.v1;
+
+import "beryllium/v1/common.proto";
+import "google/protobuf/duration.proto";
+
+service DaemonService {
+  rpc GetVersion(GetVersionRequest) returns (GetVersionResponse);
+  rpc Health(HealthRequest) returns (HealthResponse);
+  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
+}
+
+message GetVersionRequest {}
+
+message GetVersionResponse {
+  string version = 1;
+  string commit = 2;
+  string build_date = 3;
+  string os = 4;
+  string arch = 5;
+  repeated CoreInfo cores = 6;
+}
+
+message CoreInfo {
+  CoreKind kind = 1;
+  string version = 2;
+  bool installed = 3;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  bool ok = 1;
+  google.protobuf.Duration uptime = 2;
+}
+
+message ShutdownRequest {}
+
+message ShutdownResponse {}

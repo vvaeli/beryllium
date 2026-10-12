@@ -1,0 +1,144 @@
+syntax = "proto3";
+
+package beryllium.v1;
+
+import "beryllium/v1/common.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+service SubscriptionService {
+  // Fetches, parses and stores a remote subscription.
+  rpc AddSubscription(AddSubscriptionRequest) returns (AddSubscriptionResponse);
+  rpc ListSubscriptions(ListSubscriptionsRequest) returns (ListSubscriptionsResponse);
+  rpc RemoveSubscription(RemoveSubscriptionRequest) returns (RemoveSubscriptionResponse);
+  rpc UpdateSubscription(UpdateSubscriptionRequest) returns (UpdateSubscriptionResponse);
+  // Re-fetches one subscription; on failure the last good version is kept.
+  rpc RefreshSubscription(RefreshSubscriptionRequest) returns (RefreshSubscriptionResponse);
+  rpc RefreshAllSubscriptions(RefreshAllSubscriptionsRequest) returns (RefreshAllSubscriptionsResponse);
+  rpc ListServers(ListServersRequest) returns (ListServersResponse);
+  // Imports a standalone config (single URI or file such as an AmneziaWG .conf)
+  // as a LOCAL subscription.
+  rpc ImportConfig(ImportConfigRequest) returns (ImportConfigResponse);
+}
+
+enum SubscriptionKind {
+  SUBSCRIPTION_KIND_UNSPECIFIED = 0;
+  SUBSCRIPTION_KIND_REMOTE = 1;
+  SUBSCRIPTION_KIND_LOCAL = 2;
+}
+
+message Subscription {
+  string id = 1;
+  SubscriptionKind kind = 2;
+  string name = 3;
+  // The full URL is a secret and is never returned; only a masked form.
+  string url_masked = 4;
+  // From provider headers (profile-title, support-url).
+  string provider_title = 5;
+  string support_url = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  google.protobuf.Duration auto_update_interval = 8;
+  // Set when the last refresh failed.
+  string last_error = 9;
+  Quota quota = 10;
+  uint32 server_count = 11;
+}
+
+// From the subscription-userinfo header. Absent when the provider sends none.
+message Quota {
+  uint64 upload_bytes = 1;
+  uint64 download_bytes = 2;
+  // 0 means unlimited.
+  uint64 total_bytes = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+// Public view of a server; credentials stay inside the daemon.
+message Server {
+  string id = 1;
+  string subscription_id = 2;
+  string name = 3;
+  Protocol protocol = 4;
+  Transport transport = 5;
+  Security security = 6;
+  string address = 7;
+  uint32 port = 8;
+  // ISO 3166-1 alpha-2, empty if unknown.
+  string country_code = 9;
+  // Cores able to run this server, best first.
+  repeated CoreKind supported_cores = 10;
+  google.protobuf.Duration latency = 11;
+  google.protobuf.Timestamp latency_tested_at = 12;
+}
+
+message AddSubscriptionRequest {
+  string url = 1;
+  // Optional; defaults to the provider title or host.
+  string name = 2;
+}
+
+message AddSubscriptionResponse {
+  Subscription subscription = 1;
+}
+
+message ListSubscriptionsRequest {}
+
+message ListSubscriptionsResponse {
+  repeated Subscription subscriptions = 1;
+}
+
+message RemoveSubscriptionRequest {
+  string id = 1;
+}
+
+message RemoveSubscriptionResponse {}
+
+message UpdateSubscriptionRequest {
+  string id = 1;
+  optional string name = 2;
+  // Zero disables auto-update.
+  optional google.protobuf.Duration auto_update_interval = 3;
+}
+
+message UpdateSubscriptionResponse {
+  Subscription subscription = 1;
+}
+
+message RefreshSubscriptionRequest {
+  string id = 1;
+}
+
+message RefreshSubscriptionResponse {
+  Subscription subscription = 1;
+}
+
+message RefreshAllSubscriptionsRequest {}
+
+message RefreshAllSubscriptionsResponse {
+  repeated Subscription subscriptions = 1;
+}
+
+message ListServersRequest {
+  // Empty lists servers of all subscriptions.
+  string subscription_id = 1;
+}
+
+message ListServersResponse {
+  repeated Server servers = 1;
+}
+
+message ImportConfigRequest {
+  oneof source {
+    // Single share link: vless://, hy2://, awg://, vpn:// etc.
+    string uri = 1;
+    // Raw file contents (.conf, .json, .yaml).
+    bytes file_content = 2;
+  }
+  // Original file name; helps format detection.
+  string file_name = 3;
+  string name = 4;
+}
+
+message ImportConfigResponse {
+  Subscription subscription = 1;
+}

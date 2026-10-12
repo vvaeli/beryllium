@@ -9,6 +9,30 @@ permissions:
   contents: read
 
 jobs:
+  proto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            tools/go.sum
+      - run: go tool -modfile=tools/go.mod buf format --diff --exit-code
+      - run: go tool -modfile=tools/go.mod buf lint
+      - name: Generated code is up to date
+        run: |
+          go tool -modfile=tools/go.mod buf generate
+          git diff --exit-code gen/
+      # Informational until the v1 API is frozen (ROADMAP 15.5).
+      - name: Breaking changes
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: go tool -modfile=tools/go.mod buf breaking --against ".git#branch=origin/main"
+
   lint:
     runs-on: ubuntu-latest
     steps:

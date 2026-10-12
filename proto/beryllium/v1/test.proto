@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package beryllium.v1;
+
+import "beryllium/v1/common.proto";
+import "google/protobuf/duration.proto";
+
+service TestService {
+  // Measures latency to servers; results stream as they complete.
+  rpc PingServers(PingServersRequest) returns (stream PingServersResponse);
+  // Checks connectivity through the active tunnel.
+  rpc UrlTest(UrlTestRequest) returns (UrlTestResponse);
+}
+
+message PingServersRequest {
+  // Empty pings all servers.
+  repeated string server_ids = 1;
+}
+
+message PingServersResponse {
+  string server_id = 1;
+  google.protobuf.Duration latency = 2;
+  // Set when the server is unreachable.
+  ErrorDetail error = 3;
+}
+
+message UrlTestRequest {
+  // Empty uses the built-in generate_204 endpoints.
+  string url = 1;
+}
+
+message UrlTestResponse {
+  bool ok = 1;
+  google.protobuf.Duration latency = 2;
+  ErrorDetail error = 3;
+}
