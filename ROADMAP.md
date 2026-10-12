@@ -19,7 +19,7 @@
 
 - [x] 0.1 `git init`, ветка `main`, первый коммит с `README.md`, `ROADMAP.md`, `CLAUDE.md`
 - [x] 0.2 Решить вопрос лицензии. sing-box и mihomo распространяются под GPL-3.0, Xray — под MPL-2.0. Если мы поставляем их бинарники, надо соблюсти их лицензии: приложить тексты и ссылки на исходники. Свой код можно лицензировать отдельно, но проще всего выбрать GPL-3.0 для всего проекта. Добавить `LICENSE`
-- [ ] 0.3 Создать GitHub-репозиторий и запушить
+- [x] 0.3 Создать GitHub-репозиторий и запушить
 - [x] 0.4 `.gitignore` для Go, Rust, Node, Tauri и macOS (`.DS_Store`, `target/`, `node_modules/`, `dist/`, `cores/bin/`)
 - [x] 0.5 `.editorconfig` (табы для Go, 2 пробела для TS/JSON/YAML, 4 для Rust)
 - [x] 0.6 Структура каталогов:
@@ -34,7 +34,7 @@
   packaging/            — PKGBUILD, launchd plist, systemd unit, NSIS
   docs/                 — документация
   ```
-- [x] 0.7 `go mod init github.com/<user>/beryllium`, Go ≥ 1.23
+- [x] 0.7 `go mod init github.com/vvaeli/beryllium`, Go ≥ 1.23
 - [x] 0.8 `justfile` (или `Makefile`) с целями `gen`, `build`, `test`, `lint`, `run-daemon`, `gui-dev`, `fetch-cores`
 - [x] 0.9 Линтеры: `golangci-lint` с конфигом `.golangci.yml`, `cargo clippy`, `rustfmt`, `buf lint`, для фронта — `eslint` + `prettier` (или `biome`) (сейчас настроен Go; buf добавится в 1.1, Rust и фронт — в 9.1)
 - [x] 0.10 pre-commit хук (`lefthook`): gofmt, rustfmt, buf format
@@ -271,7 +271,7 @@
 - [ ] 10.3 Tauri bundle: 🍎 `.app` + `.dmg`, 🪟 NSIS `.exe`, 🐧 AppImage (+ `.deb` опционально)
 - [ ] 10.4 Укладка демона и ядер в бандл GUI (`externalBin` / resources), первая установка службы из GUI
 - [ ] 10.5 🍎 без Apple Developer: ad-hoc подпись `codesign -s -`, в README инструкция про `xattr -dr com.apple.quarantine` или «Открыть» из контекстного меню
-- [ ] 10.6 🍎 Homebrew cask в своём tap (`brew install --cask <user>/tap/beryllium`) — снимает часть проблем с карантином
+- [ ] 10.6 🍎 Homebrew cask в своём tap (`brew install --cask vvaeli/tap/beryllium`) — снимает часть проблем с карантином
 - [ ] 10.7 🪟 установщик NSIS: регистрирует службу, создаёт ярлыки, при удалении останавливает службу и чистит прокси. Предупреждение SmartScreen задокументировать (подпись кода — опционально позже)
 - [ ] 10.8 🪟 пакет для `winget` и/или `scoop`
 - [ ] 10.9 🐧 `PKGBUILD` для AUR: `beryllium-bin` (готовые бинарники) и `beryllium-git` (сборка из исходников); `.install`-хук создаёт группу `beryllium` и включает службу

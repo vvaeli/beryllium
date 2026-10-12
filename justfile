@@ -2,7 +2,7 @@ set windows-shell := ["pwsh", "-NoLogo", "-Command"]
 
 version := `git describe --tags --always --dirty 2>/dev/null || echo dev`
 commit := `git rev-parse --short HEAD 2>/dev/null || echo none`
-ldflags := "-s -w -X github.com/wexelsdev/beryllium/internal/version.Version=" + version + " -X github.com/wexelsdev/beryllium/internal/version.Commit=" + commit
+ldflags := "-s -w -X github.com/vvaeli/beryllium/internal/version.Version=" + version + " -X github.com/vvaeli/beryllium/internal/version.Commit=" + commit
 
 default:
     @just --list

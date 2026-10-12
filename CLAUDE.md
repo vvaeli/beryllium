@@ -13,7 +13,7 @@ Phase 0 (repo scaffolding) is done; everything else is design agreed with the us
 - `just lint` runs golangci-lint (v2 config in `.golangci.yml`; `gen/` is excluded) and checks gofmt
 - `just gen` / `fetch-cores` / `gui-dev` are placeholders until ROADMAP 1.1 / 5.2 / 9.1
 
-Module path: `github.com/wexelsdev/beryllium`. License: GPL-3.0.
+Module path: `github.com/vvaeli/beryllium`. License: GPL-3.0.
 
 Planned layout: `proto/beryllium/v1/` (API), `gen/go/`, `cmd/berylliumd/` (daemon), `cmd/beryl/` (CLI+TUI), `internal/`, `gui/` (Tauri), `cores/`, `packaging/`.
 

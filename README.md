@@ -50,7 +50,7 @@
 | ОС | Способ |
 |---|---|
 | Arch Linux | `yay -S beryllium-bin` (GUI) или `yay -S beryllium-cli` (только CLI/TUI) |
-| macOS | `brew install --cask <user>/tap/beryllium` или `.dmg` из [Releases](../../releases) |
+| macOS | `brew install --cask vvaeli/tap/beryllium` или `.dmg` из [Releases](../../releases) |
 | Windows | установщик `.exe` из [Releases](../../releases), `winget` / `scoop` |
 
 **macOS:** приложение не подписано сертификатом Apple. При первом запуске откройте его через контекстное меню → «Открыть» или выполните:

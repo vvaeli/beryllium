@@ -4,7 +4,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/wexelsdev/beryllium/internal/version"
+	"github.com/vvaeli/beryllium/internal/version"
 )
 
 func main() {
