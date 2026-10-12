@@ -85,11 +85,13 @@ type Subscription struct {
 	UpdatedAt          *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	AutoUpdateInterval *durationpb.Duration   `protobuf:"bytes,8,opt,name=auto_update_interval,json=autoUpdateInterval,proto3" json:"auto_update_interval,omitempty"`
 	// Set when the last refresh failed.
-	LastError     string `protobuf:"bytes,9,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
-	Quota         *Quota `protobuf:"bytes,10,opt,name=quota,proto3" json:"quota,omitempty"`
-	ServerCount   uint32 `protobuf:"varint,11,opt,name=server_count,json=serverCount,proto3" json:"server_count,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	LastError   string `protobuf:"bytes,9,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	Quota       *Quota `protobuf:"bytes,10,opt,name=quota,proto3" json:"quota,omitempty"`
+	ServerCount uint32 `protobuf:"varint,11,opt,name=server_count,json=serverCount,proto3" json:"server_count,omitempty"`
+	// Routing profile delivered with this subscription, if any.
+	RoutingProfileId string `protobuf:"bytes,12,opt,name=routing_profile_id,json=routingProfileId,proto3" json:"routing_profile_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Subscription) Reset() {
@@ -197,6 +199,13 @@ func (x *Subscription) GetServerCount() uint32 {
 		return x.ServerCount
 	}
 	return 0
+}
+
+func (x *Subscription) GetRoutingProfileId() string {
+	if x != nil {
+		return x.RoutingProfileId
+	}
+	return ""
 }
 
 // From the subscription-userinfo header. Absent when the provider sends none.
@@ -1174,6 +1183,7 @@ type GetShareLinkRequest struct {
 	//
 	//	*GetShareLinkRequest_SubscriptionId
 	//	*GetShareLinkRequest_ServerId
+	//	*GetShareLinkRequest_RoutingProfileId
 	Target        isGetShareLinkRequest_Target `protobuf_oneof:"target"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1234,6 +1244,15 @@ func (x *GetShareLinkRequest) GetServerId() string {
 	return ""
 }
 
+func (x *GetShareLinkRequest) GetRoutingProfileId() string {
+	if x != nil {
+		if x, ok := x.Target.(*GetShareLinkRequest_RoutingProfileId); ok {
+			return x.RoutingProfileId
+		}
+	}
+	return ""
+}
+
 type isGetShareLinkRequest_Target interface {
 	isGetShareLinkRequest_Target()
 }
@@ -1248,9 +1267,16 @@ type GetShareLinkRequest_ServerId struct {
 	ServerId string `protobuf:"bytes,2,opt,name=server_id,json=serverId,proto3,oneof"`
 }
 
+type GetShareLinkRequest_RoutingProfileId struct {
+	// Routing profile: a happ://routing/onadd/<base64> deeplink.
+	RoutingProfileId string `protobuf:"bytes,3,opt,name=routing_profile_id,json=routingProfileId,proto3,oneof"`
+}
+
 func (*GetShareLinkRequest_SubscriptionId) isGetShareLinkRequest_Target() {}
 
 func (*GetShareLinkRequest_ServerId) isGetShareLinkRequest_Target() {}
+
+func (*GetShareLinkRequest_RoutingProfileId) isGetShareLinkRequest_Target() {}
 
 type GetShareLinkResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1300,7 +1326,7 @@ var File_beryllium_v1_subscription_proto protoreflect.FileDescriptor
 
 const file_beryllium_v1_subscription_proto_rawDesc = "" +
 	"\n" +
-	"\x1fberyllium/v1/subscription.proto\x12\fberyllium.v1\x1a\x19beryllium/v1/common.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc2\x03\n" +
+	"\x1fberyllium/v1/subscription.proto\x12\fberyllium.v1\x1a\x19beryllium/v1/common.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf0\x03\n" +
 	"\fSubscription\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x122\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1e.beryllium.v1.SubscriptionKindR\x04kind\x12\x12\n" +
@@ -1317,7 +1343,8 @@ const file_beryllium_v1_subscription_proto_rawDesc = "" +
 	"last_error\x18\t \x01(\tR\tlastError\x12)\n" +
 	"\x05quota\x18\n" +
 	" \x01(\v2\x13.beryllium.v1.QuotaR\x05quota\x12!\n" +
-	"\fserver_count\x18\v \x01(\rR\vserverCount\"\xad\x01\n" +
+	"\fserver_count\x18\v \x01(\rR\vserverCount\x12,\n" +
+	"\x12routing_profile_id\x18\f \x01(\tR\x10routingProfileId\"\xad\x01\n" +
 	"\x05Quota\x12!\n" +
 	"\fupload_bytes\x18\x01 \x01(\x04R\vuploadBytes\x12%\n" +
 	"\x0edownload_bytes\x18\x02 \x01(\x04R\rdownloadBytes\x12\x1f\n" +
@@ -1376,10 +1403,11 @@ const file_beryllium_v1_subscription_proto_rawDesc = "" +
 	"\x04name\x18\x04 \x01(\tR\x04nameB\b\n" +
 	"\x06source\"V\n" +
 	"\x14ImportConfigResponse\x12>\n" +
-	"\fsubscription\x18\x01 \x01(\v2\x1a.beryllium.v1.SubscriptionR\fsubscription\"i\n" +
+	"\fsubscription\x18\x01 \x01(\v2\x1a.beryllium.v1.SubscriptionR\fsubscription\"\x99\x01\n" +
 	"\x13GetShareLinkRequest\x12)\n" +
 	"\x0fsubscription_id\x18\x01 \x01(\tH\x00R\x0esubscriptionId\x12\x1d\n" +
-	"\tserver_id\x18\x02 \x01(\tH\x00R\bserverIdB\b\n" +
+	"\tserver_id\x18\x02 \x01(\tH\x00R\bserverId\x12.\n" +
+	"\x12routing_profile_id\x18\x03 \x01(\tH\x00R\x10routingProfileIdB\b\n" +
 	"\x06target\"(\n" +
 	"\x14GetShareLinkResponse\x12\x10\n" +
 	"\x03uri\x18\x01 \x01(\tR\x03uri*p\n" +
@@ -1502,6 +1530,7 @@ func file_beryllium_v1_subscription_proto_init() {
 	file_beryllium_v1_subscription_proto_msgTypes[19].OneofWrappers = []any{
 		(*GetShareLinkRequest_SubscriptionId)(nil),
 		(*GetShareLinkRequest_ServerId)(nil),
+		(*GetShareLinkRequest_RoutingProfileId)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

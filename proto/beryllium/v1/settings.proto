@@ -13,15 +13,6 @@ service SettingsService {
   rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse);
 }
 
-enum RoutingPreset {
-  ROUTING_PRESET_UNSPECIFIED = 0;
-  ROUTING_PRESET_PROXY_ALL = 1;
-  // Russian domains/IPs go direct, everything else through the proxy.
-  ROUTING_PRESET_BYPASS_RU = 2;
-  // Only known-blocked resources go through the proxy.
-  ROUTING_PRESET_BLOCKED_ONLY = 3;
-}
-
 enum RuleMatch {
   RULE_MATCH_UNSPECIFIED = 0;
   RULE_MATCH_DOMAIN = 1;
@@ -67,10 +58,14 @@ message Settings {
   LogLevel log_level = 8;
 }
 
+// The active routing profile is managed by RoutingService.
 message RoutingSettings {
-  RoutingPreset preset = 1;
-  // Evaluated in order, before the preset.
+  reserved 1;
+  reserved "preset";
+  // User rules, evaluated in order before the active routing profile.
   repeated RoutingRule rules = 2;
+  // Import and activate routing profiles sent by subscription providers.
+  bool apply_provider_routing = 3;
 }
 
 message RoutingRule {

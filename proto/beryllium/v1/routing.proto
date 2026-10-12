@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package beryllium.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Routing profiles: built-in presets, profiles delivered by a subscription
+// provider (Happ/INCY format: `routing` header or happ://routing/... lines)
+// and profiles imported by the user. Exactly one profile is active; the
+// user's own rules from Settings are applied before it.
+service RoutingService {
+  rpc ListRoutingProfiles(ListRoutingProfilesRequest) returns (ListRoutingProfilesResponse);
+  // Imports a profile from a deeplink (happ://routing/add|onadd/<base64>,
+  // incy://routing/...), raw JSON or an https:// URL. A profile with the
+  // same name is replaced only if its LastUpdated is newer.
+  rpc ImportRoutingProfile(ImportRoutingProfileRequest) returns (ImportRoutingProfileResponse);
+  rpc ActivateRoutingProfile(ActivateRoutingProfileRequest) returns (ActivateRoutingProfileResponse);
+  rpc RemoveRoutingProfile(RemoveRoutingProfileRequest) returns (RemoveRoutingProfileResponse);
+  // Re-downloads the profile's geoip/geosite files.
+  rpc RefreshGeoData(RefreshGeoDataRequest) returns (RefreshGeoDataResponse);
+}
+
+enum RoutingProfileSource {
+  ROUTING_PROFILE_SOURCE_UNSPECIFIED = 0;
+  // Shipped with Beryllium: proxy all / bypass RU / blocked only.
+  ROUTING_PROFILE_SOURCE_BUILTIN = 1;
+  ROUTING_PROFILE_SOURCE_SUBSCRIPTION = 2;
+  ROUTING_PROFILE_SOURCE_IMPORTED = 3;
+}
+
+enum GeoDataState {
+  GEO_DATA_STATE_UNSPECIFIED = 0;
+  // Profile references no external geo files.
+  GEO_DATA_STATE_NOT_NEEDED = 1;
+  GEO_DATA_STATE_DOWNLOADING = 2;
+  GEO_DATA_STATE_READY = 3;
+  GEO_DATA_STATE_FAILED = 4;
+}
+
+message RoutingProfile {
+  string id = 1;
+  string name = 2;
+  RoutingProfileSource source = 3;
+  // Set when source is SUBSCRIPTION.
+  string subscription_id = 4;
+  bool active = 5;
+  // Unmatched traffic goes through the proxy (true) or direct (false).
+  bool global_proxy = 6;
+  // Provider's LastUpdated; drives updates of the profile and its geo files.
+  google.protobuf.Timestamp last_updated = 7;
+  uint32 direct_rule_count = 8;
+  uint32 proxy_rule_count = 9;
+  uint32 block_rule_count = 10;
+  GeoDataState geo_data_state = 11;
+  // Set when geo data or the profile itself failed to load.
+  string last_error = 12;
+}
+
+message ListRoutingProfilesRequest {}
+
+message ListRoutingProfilesResponse {
+  repeated RoutingProfile profiles = 1;
+}
+
+message ImportRoutingProfileRequest {
+  oneof source {
+    // happ://routing/..., incy://routing/... or an https:// URL.
+    string uri = 1;
+    // Raw profile JSON.
+    string json = 2;
+  }
+  // Activate after geo data is ready. Defaults to the deeplink's mode
+  // (onadd activates, add does not).
+  optional bool activate = 3;
+}
+
+message ImportRoutingProfileResponse {
+  RoutingProfile profile = 1;
+}
+
+message ActivateRoutingProfileRequest {
+  string id = 1;
+}
+
+message ActivateRoutingProfileResponse {
+  RoutingProfile profile = 1;
+}
+
+message RemoveRoutingProfileRequest {
+  string id = 1;
+}
+
+message RemoveRoutingProfileResponse {}
+
+message RefreshGeoDataRequest {
+  string id = 1;
+}
+
+message RefreshGeoDataResponse {
+  RoutingProfile profile = 1;
+}

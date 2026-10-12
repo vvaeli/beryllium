@@ -103,4 +103,5 @@ func (d *Daemon) register(s *grpc.Server) {
 	berylliumv1.RegisterTestServiceServer(s, &testService{})
 	berylliumv1.RegisterSettingsServiceServer(s, &settingsService{})
 	berylliumv1.RegisterLogServiceServer(s, &logService{})
+	berylliumv1.RegisterRoutingServiceServer(s, &routingService{})
 }

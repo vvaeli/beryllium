@@ -67,6 +67,10 @@ Beryllium is a cross-platform desktop proxy/VPN client for Arch Linux, macOS and
 
 `proto/beryllium/v1/*.proto` is the single contract for the daemon and all three frontends. buf STANDARD lint applies: every RPC has its own `<Rpc>Request`/`<Rpc>Response`, and enum values are prefixed with the enum name and start with `_UNSPECIFIED`. Errors are gRPC status codes with `ErrorDetail` (an `ErrorReason`) in the details. Credentials and full subscription URLs never cross the API, except through `GetShareLink` (for copy/QR), which frontends call only on explicit user action and must never log or cache. `Server` is a public view, and `Subscription` has only `url_masked`.
 
+## Routing
+
+Routing is always done by sing-box, even for servers carried by Xray or mihomo, which sit behind it via SOCKS. Providers deliver routing profiles in the Happ/INCY format (a `routing` header or `happ://routing/{add,onadd}/<base64>` lines in the subscription body), which use Xray-style rules and `geosite.dat`/`geoip.dat`. sing-box can't read `.dat` files, so the daemon converts the tags a profile uses into inline sing-box rule-sets (ROADMAP 6E). Order: user rules → active profile → `final`.
+
 ## Packaging
 
 Linux ships only as native packages (Arch `.pkg.tar.zst` + AUR, `.deb`, `.rpm` via nfpm), never AppImage. Each package installs the daemon, systemd unit, sysusers group, cores and GUI (ROADMAP 10.9).

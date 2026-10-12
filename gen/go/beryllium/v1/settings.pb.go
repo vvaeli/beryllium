@@ -23,60 +23,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type RoutingPreset int32
-
-const (
-	RoutingPreset_ROUTING_PRESET_UNSPECIFIED RoutingPreset = 0
-	RoutingPreset_ROUTING_PRESET_PROXY_ALL   RoutingPreset = 1
-	// Russian domains/IPs go direct, everything else through the proxy.
-	RoutingPreset_ROUTING_PRESET_BYPASS_RU RoutingPreset = 2
-	// Only known-blocked resources go through the proxy.
-	RoutingPreset_ROUTING_PRESET_BLOCKED_ONLY RoutingPreset = 3
-)
-
-// Enum value maps for RoutingPreset.
-var (
-	RoutingPreset_name = map[int32]string{
-		0: "ROUTING_PRESET_UNSPECIFIED",
-		1: "ROUTING_PRESET_PROXY_ALL",
-		2: "ROUTING_PRESET_BYPASS_RU",
-		3: "ROUTING_PRESET_BLOCKED_ONLY",
-	}
-	RoutingPreset_value = map[string]int32{
-		"ROUTING_PRESET_UNSPECIFIED":  0,
-		"ROUTING_PRESET_PROXY_ALL":    1,
-		"ROUTING_PRESET_BYPASS_RU":    2,
-		"ROUTING_PRESET_BLOCKED_ONLY": 3,
-	}
-)
-
-func (x RoutingPreset) Enum() *RoutingPreset {
-	p := new(RoutingPreset)
-	*p = x
-	return p
-}
-
-func (x RoutingPreset) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (RoutingPreset) Descriptor() protoreflect.EnumDescriptor {
-	return file_beryllium_v1_settings_proto_enumTypes[0].Descriptor()
-}
-
-func (RoutingPreset) Type() protoreflect.EnumType {
-	return &file_beryllium_v1_settings_proto_enumTypes[0]
-}
-
-func (x RoutingPreset) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use RoutingPreset.Descriptor instead.
-func (RoutingPreset) EnumDescriptor() ([]byte, []int) {
-	return file_beryllium_v1_settings_proto_rawDescGZIP(), []int{0}
-}
-
 type RuleMatch int32
 
 const (
@@ -122,11 +68,11 @@ func (x RuleMatch) String() string {
 }
 
 func (RuleMatch) Descriptor() protoreflect.EnumDescriptor {
-	return file_beryllium_v1_settings_proto_enumTypes[1].Descriptor()
+	return file_beryllium_v1_settings_proto_enumTypes[0].Descriptor()
 }
 
 func (RuleMatch) Type() protoreflect.EnumType {
-	return &file_beryllium_v1_settings_proto_enumTypes[1]
+	return &file_beryllium_v1_settings_proto_enumTypes[0]
 }
 
 func (x RuleMatch) Number() protoreflect.EnumNumber {
@@ -135,7 +81,7 @@ func (x RuleMatch) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use RuleMatch.Descriptor instead.
 func (RuleMatch) EnumDescriptor() ([]byte, []int) {
-	return file_beryllium_v1_settings_proto_rawDescGZIP(), []int{1}
+	return file_beryllium_v1_settings_proto_rawDescGZIP(), []int{0}
 }
 
 type RuleAction int32
@@ -174,11 +120,11 @@ func (x RuleAction) String() string {
 }
 
 func (RuleAction) Descriptor() protoreflect.EnumDescriptor {
-	return file_beryllium_v1_settings_proto_enumTypes[2].Descriptor()
+	return file_beryllium_v1_settings_proto_enumTypes[1].Descriptor()
 }
 
 func (RuleAction) Type() protoreflect.EnumType {
-	return &file_beryllium_v1_settings_proto_enumTypes[2]
+	return &file_beryllium_v1_settings_proto_enumTypes[1]
 }
 
 func (x RuleAction) Number() protoreflect.EnumNumber {
@@ -187,7 +133,7 @@ func (x RuleAction) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use RuleAction.Descriptor instead.
 func (RuleAction) EnumDescriptor() ([]byte, []int) {
-	return file_beryllium_v1_settings_proto_rawDescGZIP(), []int{2}
+	return file_beryllium_v1_settings_proto_rawDescGZIP(), []int{1}
 }
 
 type Ipv6Mode int32
@@ -224,11 +170,11 @@ func (x Ipv6Mode) String() string {
 }
 
 func (Ipv6Mode) Descriptor() protoreflect.EnumDescriptor {
-	return file_beryllium_v1_settings_proto_enumTypes[3].Descriptor()
+	return file_beryllium_v1_settings_proto_enumTypes[2].Descriptor()
 }
 
 func (Ipv6Mode) Type() protoreflect.EnumType {
-	return &file_beryllium_v1_settings_proto_enumTypes[3]
+	return &file_beryllium_v1_settings_proto_enumTypes[2]
 }
 
 func (x Ipv6Mode) Number() protoreflect.EnumNumber {
@@ -237,7 +183,7 @@ func (x Ipv6Mode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Ipv6Mode.Descriptor instead.
 func (Ipv6Mode) EnumDescriptor() ([]byte, []int) {
-	return file_beryllium_v1_settings_proto_rawDescGZIP(), []int{3}
+	return file_beryllium_v1_settings_proto_rawDescGZIP(), []int{2}
 }
 
 type LogLevel int32
@@ -279,11 +225,11 @@ func (x LogLevel) String() string {
 }
 
 func (LogLevel) Descriptor() protoreflect.EnumDescriptor {
-	return file_beryllium_v1_settings_proto_enumTypes[4].Descriptor()
+	return file_beryllium_v1_settings_proto_enumTypes[3].Descriptor()
 }
 
 func (LogLevel) Type() protoreflect.EnumType {
-	return &file_beryllium_v1_settings_proto_enumTypes[4]
+	return &file_beryllium_v1_settings_proto_enumTypes[3]
 }
 
 func (x LogLevel) Number() protoreflect.EnumNumber {
@@ -292,7 +238,7 @@ func (x LogLevel) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use LogLevel.Descriptor instead.
 func (LogLevel) EnumDescriptor() ([]byte, []int) {
-	return file_beryllium_v1_settings_proto_rawDescGZIP(), []int{4}
+	return file_beryllium_v1_settings_proto_rawDescGZIP(), []int{3}
 }
 
 type Settings struct {
@@ -397,13 +343,15 @@ func (x *Settings) GetLogLevel() LogLevel {
 	return LogLevel_LOG_LEVEL_UNSPECIFIED
 }
 
+// The active routing profile is managed by RoutingService.
 type RoutingSettings struct {
-	state  protoimpl.MessageState `protogen:"open.v1"`
-	Preset RoutingPreset          `protobuf:"varint,1,opt,name=preset,proto3,enum=beryllium.v1.RoutingPreset" json:"preset,omitempty"`
-	// Evaluated in order, before the preset.
-	Rules         []*RoutingRule `protobuf:"bytes,2,rep,name=rules,proto3" json:"rules,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// User rules, evaluated in order before the active routing profile.
+	Rules []*RoutingRule `protobuf:"bytes,2,rep,name=rules,proto3" json:"rules,omitempty"`
+	// Import and activate routing profiles sent by subscription providers.
+	ApplyProviderRouting bool `protobuf:"varint,3,opt,name=apply_provider_routing,json=applyProviderRouting,proto3" json:"apply_provider_routing,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *RoutingSettings) Reset() {
@@ -436,18 +384,18 @@ func (*RoutingSettings) Descriptor() ([]byte, []int) {
 	return file_beryllium_v1_settings_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *RoutingSettings) GetPreset() RoutingPreset {
-	if x != nil {
-		return x.Preset
-	}
-	return RoutingPreset_ROUTING_PRESET_UNSPECIFIED
-}
-
 func (x *RoutingSettings) GetRules() []*RoutingRule {
 	if x != nil {
 		return x.Rules
 	}
 	return nil
+}
+
+func (x *RoutingSettings) GetApplyProviderRouting() bool {
+	if x != nil {
+		return x.ApplyProviderRouting
+	}
+	return false
 }
 
 type RoutingRule struct {
@@ -823,10 +771,10 @@ const file_beryllium_v1_settings_proto_rawDesc = "" +
 	"\vkill_switch\x18\x06 \x01(\bR\n" +
 	"killSwitch\x12[\n" +
 	"\x1csubscription_update_interval\x18\a \x01(\v2\x19.google.protobuf.DurationR\x1asubscriptionUpdateInterval\x123\n" +
-	"\tlog_level\x18\b \x01(\x0e2\x16.beryllium.v1.LogLevelR\blogLevel\"w\n" +
-	"\x0fRoutingSettings\x123\n" +
-	"\x06preset\x18\x01 \x01(\x0e2\x1b.beryllium.v1.RoutingPresetR\x06preset\x12/\n" +
-	"\x05rules\x18\x02 \x03(\v2\x19.beryllium.v1.RoutingRuleR\x05rules\"\x84\x01\n" +
+	"\tlog_level\x18\b \x01(\x0e2\x16.beryllium.v1.LogLevelR\blogLevel\"\x86\x01\n" +
+	"\x0fRoutingSettings\x12/\n" +
+	"\x05rules\x18\x02 \x03(\v2\x19.beryllium.v1.RoutingRuleR\x05rules\x124\n" +
+	"\x16apply_provider_routing\x18\x03 \x01(\bR\x14applyProviderRoutingJ\x04\b\x01\x10\x02R\x06preset\"\x84\x01\n" +
 	"\vRoutingRule\x12-\n" +
 	"\x05match\x18\x01 \x01(\x0e2\x17.beryllium.v1.RuleMatchR\x05match\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\x120\n" +
@@ -849,12 +797,7 @@ const file_beryllium_v1_settings_proto_rawDesc = "" +
 	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskR\n" +
 	"updateMask\"L\n" +
 	"\x16UpdateSettingsResponse\x122\n" +
-	"\bsettings\x18\x01 \x01(\v2\x16.beryllium.v1.SettingsR\bsettings*\x8c\x01\n" +
-	"\rRoutingPreset\x12\x1e\n" +
-	"\x1aROUTING_PRESET_UNSPECIFIED\x10\x00\x12\x1c\n" +
-	"\x18ROUTING_PRESET_PROXY_ALL\x10\x01\x12\x1c\n" +
-	"\x18ROUTING_PRESET_BYPASS_RU\x10\x02\x12\x1f\n" +
-	"\x1bROUTING_PRESET_BLOCKED_ONLY\x10\x03*\xcd\x01\n" +
+	"\bsettings\x18\x01 \x01(\v2\x16.beryllium.v1.SettingsR\bsettings*\xcd\x01\n" +
 	"\tRuleMatch\x12\x1a\n" +
 	"\x16RULE_MATCH_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11RULE_MATCH_DOMAIN\x10\x01\x12\x1c\n" +
@@ -896,55 +839,53 @@ func file_beryllium_v1_settings_proto_rawDescGZIP() []byte {
 	return file_beryllium_v1_settings_proto_rawDescData
 }
 
-var file_beryllium_v1_settings_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_beryllium_v1_settings_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_beryllium_v1_settings_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_beryllium_v1_settings_proto_goTypes = []any{
-	(RoutingPreset)(0),             // 0: beryllium.v1.RoutingPreset
-	(RuleMatch)(0),                 // 1: beryllium.v1.RuleMatch
-	(RuleAction)(0),                // 2: beryllium.v1.RuleAction
-	(Ipv6Mode)(0),                  // 3: beryllium.v1.Ipv6Mode
-	(LogLevel)(0),                  // 4: beryllium.v1.LogLevel
-	(*Settings)(nil),               // 5: beryllium.v1.Settings
-	(*RoutingSettings)(nil),        // 6: beryllium.v1.RoutingSettings
-	(*RoutingRule)(nil),            // 7: beryllium.v1.RoutingRule
-	(*DnsSettings)(nil),            // 8: beryllium.v1.DnsSettings
-	(*WatchdogSettings)(nil),       // 9: beryllium.v1.WatchdogSettings
-	(*GetSettingsRequest)(nil),     // 10: beryllium.v1.GetSettingsRequest
-	(*GetSettingsResponse)(nil),    // 11: beryllium.v1.GetSettingsResponse
-	(*UpdateSettingsRequest)(nil),  // 12: beryllium.v1.UpdateSettingsRequest
-	(*UpdateSettingsResponse)(nil), // 13: beryllium.v1.UpdateSettingsResponse
-	(Mode)(0),                      // 14: beryllium.v1.Mode
-	(CoreKind)(0),                  // 15: beryllium.v1.CoreKind
-	(*durationpb.Duration)(nil),    // 16: google.protobuf.Duration
-	(*fieldmaskpb.FieldMask)(nil),  // 17: google.protobuf.FieldMask
+	(RuleMatch)(0),                 // 0: beryllium.v1.RuleMatch
+	(RuleAction)(0),                // 1: beryllium.v1.RuleAction
+	(Ipv6Mode)(0),                  // 2: beryllium.v1.Ipv6Mode
+	(LogLevel)(0),                  // 3: beryllium.v1.LogLevel
+	(*Settings)(nil),               // 4: beryllium.v1.Settings
+	(*RoutingSettings)(nil),        // 5: beryllium.v1.RoutingSettings
+	(*RoutingRule)(nil),            // 6: beryllium.v1.RoutingRule
+	(*DnsSettings)(nil),            // 7: beryllium.v1.DnsSettings
+	(*WatchdogSettings)(nil),       // 8: beryllium.v1.WatchdogSettings
+	(*GetSettingsRequest)(nil),     // 9: beryllium.v1.GetSettingsRequest
+	(*GetSettingsResponse)(nil),    // 10: beryllium.v1.GetSettingsResponse
+	(*UpdateSettingsRequest)(nil),  // 11: beryllium.v1.UpdateSettingsRequest
+	(*UpdateSettingsResponse)(nil), // 12: beryllium.v1.UpdateSettingsResponse
+	(Mode)(0),                      // 13: beryllium.v1.Mode
+	(CoreKind)(0),                  // 14: beryllium.v1.CoreKind
+	(*durationpb.Duration)(nil),    // 15: google.protobuf.Duration
+	(*fieldmaskpb.FieldMask)(nil),  // 16: google.protobuf.FieldMask
 }
 var file_beryllium_v1_settings_proto_depIdxs = []int32{
-	14, // 0: beryllium.v1.Settings.mode:type_name -> beryllium.v1.Mode
-	15, // 1: beryllium.v1.Settings.preferred_core:type_name -> beryllium.v1.CoreKind
-	6,  // 2: beryllium.v1.Settings.routing:type_name -> beryllium.v1.RoutingSettings
-	8,  // 3: beryllium.v1.Settings.dns:type_name -> beryllium.v1.DnsSettings
-	9,  // 4: beryllium.v1.Settings.watchdog:type_name -> beryllium.v1.WatchdogSettings
-	16, // 5: beryllium.v1.Settings.subscription_update_interval:type_name -> google.protobuf.Duration
-	4,  // 6: beryllium.v1.Settings.log_level:type_name -> beryllium.v1.LogLevel
-	0,  // 7: beryllium.v1.RoutingSettings.preset:type_name -> beryllium.v1.RoutingPreset
-	7,  // 8: beryllium.v1.RoutingSettings.rules:type_name -> beryllium.v1.RoutingRule
-	1,  // 9: beryllium.v1.RoutingRule.match:type_name -> beryllium.v1.RuleMatch
-	2,  // 10: beryllium.v1.RoutingRule.action:type_name -> beryllium.v1.RuleAction
-	3,  // 11: beryllium.v1.DnsSettings.ipv6:type_name -> beryllium.v1.Ipv6Mode
-	16, // 12: beryllium.v1.WatchdogSettings.interval:type_name -> google.protobuf.Duration
-	5,  // 13: beryllium.v1.GetSettingsResponse.settings:type_name -> beryllium.v1.Settings
-	5,  // 14: beryllium.v1.UpdateSettingsRequest.settings:type_name -> beryllium.v1.Settings
-	17, // 15: beryllium.v1.UpdateSettingsRequest.update_mask:type_name -> google.protobuf.FieldMask
-	5,  // 16: beryllium.v1.UpdateSettingsResponse.settings:type_name -> beryllium.v1.Settings
-	10, // 17: beryllium.v1.SettingsService.GetSettings:input_type -> beryllium.v1.GetSettingsRequest
-	12, // 18: beryllium.v1.SettingsService.UpdateSettings:input_type -> beryllium.v1.UpdateSettingsRequest
-	11, // 19: beryllium.v1.SettingsService.GetSettings:output_type -> beryllium.v1.GetSettingsResponse
-	13, // 20: beryllium.v1.SettingsService.UpdateSettings:output_type -> beryllium.v1.UpdateSettingsResponse
-	19, // [19:21] is the sub-list for method output_type
-	17, // [17:19] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	13, // 0: beryllium.v1.Settings.mode:type_name -> beryllium.v1.Mode
+	14, // 1: beryllium.v1.Settings.preferred_core:type_name -> beryllium.v1.CoreKind
+	5,  // 2: beryllium.v1.Settings.routing:type_name -> beryllium.v1.RoutingSettings
+	7,  // 3: beryllium.v1.Settings.dns:type_name -> beryllium.v1.DnsSettings
+	8,  // 4: beryllium.v1.Settings.watchdog:type_name -> beryllium.v1.WatchdogSettings
+	15, // 5: beryllium.v1.Settings.subscription_update_interval:type_name -> google.protobuf.Duration
+	3,  // 6: beryllium.v1.Settings.log_level:type_name -> beryllium.v1.LogLevel
+	6,  // 7: beryllium.v1.RoutingSettings.rules:type_name -> beryllium.v1.RoutingRule
+	0,  // 8: beryllium.v1.RoutingRule.match:type_name -> beryllium.v1.RuleMatch
+	1,  // 9: beryllium.v1.RoutingRule.action:type_name -> beryllium.v1.RuleAction
+	2,  // 10: beryllium.v1.DnsSettings.ipv6:type_name -> beryllium.v1.Ipv6Mode
+	15, // 11: beryllium.v1.WatchdogSettings.interval:type_name -> google.protobuf.Duration
+	4,  // 12: beryllium.v1.GetSettingsResponse.settings:type_name -> beryllium.v1.Settings
+	4,  // 13: beryllium.v1.UpdateSettingsRequest.settings:type_name -> beryllium.v1.Settings
+	16, // 14: beryllium.v1.UpdateSettingsRequest.update_mask:type_name -> google.protobuf.FieldMask
+	4,  // 15: beryllium.v1.UpdateSettingsResponse.settings:type_name -> beryllium.v1.Settings
+	9,  // 16: beryllium.v1.SettingsService.GetSettings:input_type -> beryllium.v1.GetSettingsRequest
+	11, // 17: beryllium.v1.SettingsService.UpdateSettings:input_type -> beryllium.v1.UpdateSettingsRequest
+	10, // 18: beryllium.v1.SettingsService.GetSettings:output_type -> beryllium.v1.GetSettingsResponse
+	12, // 19: beryllium.v1.SettingsService.UpdateSettings:output_type -> beryllium.v1.UpdateSettingsResponse
+	18, // [18:20] is the sub-list for method output_type
+	16, // [16:18] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_beryllium_v1_settings_proto_init() }
@@ -958,7 +899,7 @@ func file_beryllium_v1_settings_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_beryllium_v1_settings_proto_rawDesc), len(file_beryllium_v1_settings_proto_rawDesc)),
-			NumEnums:      5,
+			NumEnums:      4,
 			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,

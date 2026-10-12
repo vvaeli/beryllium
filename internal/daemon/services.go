@@ -62,3 +62,7 @@ type settingsService struct {
 type logService struct {
 	berylliumv1.UnimplementedLogServiceServer
 }
+
+type routingService struct {
+	berylliumv1.UnimplementedRoutingServiceServer
+}
