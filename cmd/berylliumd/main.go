@@ -35,6 +35,7 @@ func run() error {
 	flag.StringVar(&p.StateDir, "config-dir", p.StateDir, "state directory")
 	flag.StringVar(&p.LogDir, "log-dir", p.LogDir, "log directory")
 	flag.StringVar(&p.Socket, "socket", p.Socket, "IPC socket path or named pipe")
+	flag.StringVar(&p.CoresDir, "cores-dir", p.CoresDir, "directory with sing-box, xray and mihomo executables")
 	logLevel := flag.String("log-level", "info", "debug|info|warn|error")
 	foreground := flag.Bool("foreground", false, "also log to stderr")
 	showVersion := flag.Bool("version", false, "print version and exit")

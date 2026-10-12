@@ -9,6 +9,8 @@ type Paths struct {
 	StateDir string
 	// LogDir holds rotated daemon logs.
 	LogDir string
+	// CoresDir holds the sing-box, xray and mihomo executables.
+	CoresDir string
 	// Socket is the IPC address: a unix socket path or a Windows named pipe.
 	Socket string
 }

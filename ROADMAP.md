@@ -95,7 +95,7 @@
 - [x] 3.2 Глобальные флаги: `--socket` (или env `BERYLLIUM_SOCKET`), `--json` (машиночитаемый вывод), `--timeout`
 - [x] 3.3 `beryl version` показывает версию CLI и демона
 - [x] 3.4 Понятная ошибка, если демон не запущен или нет прав («добавьте себя в группу beryllium», «запустите службу»). Демон не обрывает соединение с чужим пользователем, а отвечает `PermissionDenied`, поэтому клиент может подсказать, что делать
-- [ ] 3.5 Остальные подкоманды добавляются по мере появления функций в следующих фазах
+- [x] 3.5 Остальные подкоманды добавляются по мере появления функций в следующих фазах
 
 ---
 
@@ -131,20 +131,20 @@
 
 ## Фаза 5. Менеджер ядер
 
-- [ ] 5.1 `cores/versions.json`: закреплённые версии sing-box, Xray и mihomo, URL и SHA-256 для каждой пары ОС/архитектура (amd64, arm64)
-- [ ] 5.2 Скрипт `just fetch-cores`: скачивает бинарники в `cores/bin/<os>-<arch>/` и проверяет контрольные суммы
-- [ ] 5.3 Интерфейс `Core` (`internal/core`): `Name`, `Capabilities`, `Start(cfg)`, `Stop`, `HealthCheck`, `Stats`
-- [ ] 5.4 Супервизор процессов: запуск, перехват stdout/stderr в `LogService`, обнаружение падения, перезапуск с backoff, kill по таймауту. 🐧 `Pdeathsig`, 🪟 Job Object, чтобы ядра не оставались сиротами
-- [ ] 5.5 Выделение свободных локальных портов, inbound'ы слушают только `127.0.0.1`
-- [ ] 5.6 Транслятор модели в конфиг **sing-box**: outbound на каждый протокол, inbound mixed (socks + http)
-- [ ] 5.7 Транслятор модели в конфиг **Xray**: outbound на каждый протокол, inbound socks
-- [ ] 5.8 Транслятор модели в конфиг **mihomo** (YAML): outbound `wireguard` с `amnezia-wg-option` для AmneziaWG, inbound mixed. Сначала проверить, какие параметры AWG 2.0 поддерживает текущая версия mihomo. Если не все — встроить `amneziawg-go` с userspace-стеком (netstack) как отдельное мини-ядро
-- [ ] 5.9 Golden-тесты трансляторов: модель → ожидаемый JSON/YAML, а также `sing-box check`, `xray -test` и `mihomo -t` в CI
-- [ ] 5.10 Clash API у sing-box и mihomo, stats API у Xray для скорости и трафика
-- [ ] 5.11 Матрица возможностей: протокол + транспорт → список ядер в порядке приоритета (например `xhttp → [xray]`, `hysteria2 → [sing-box]`, `amneziawg → [mihomo]`, `vless+reality+tcp → [sing-box, xray]`)
-- [ ] 5.12 Выбор ядра в режиме `AUTO` по матрице, ручное переопределение пользователем
-- [ ] 5.13 Цепочка: sing-box держит TUN или mixed inbound, а outbound `socks → 127.0.0.1:N` ведёт в Xray или mihomo, если сервер требует их
-- [ ] 5.14 Интеграционный тест: локальный тестовый сервер (sing-box/Xray-сервер в Docker с VLESS+Reality, Hysteria2, XHTTP, плюс сервер AmneziaWG) и проверка, что через клиента проходит HTTP-запрос
+- [x] 5.1 `cores/versions.json`: закреплённые версии sing-box, Xray и mihomo, URL и SHA-256 для каждой пары ОС/архитектура (amd64, arm64)
+- [x] 5.2 `just fetch-cores` (`go -C tools run ./fetchcores`; `-bump` обновляет `versions.json` из GitHub API, суммы берутся из digest ассетов): скачивает бинарники в `cores/bin/<os>-<arch>/` и проверяет контрольные суммы
+- [x] 5.3 Интерфейс `Core` (`internal/core`): `Name`, `Capabilities`, `Start(cfg)`, `Stop`, `HealthCheck`, `Stats`
+- [x] 5.4 Супервизор процессов: запуск, перехват stdout/stderr в `LogService`, обнаружение падения, перезапуск с backoff, kill по таймауту. 🐧 `Pdeathsig`, 🪟 Job Object, чтобы ядра не оставались сиротами
+- [x] 5.5 Выделение свободных локальных портов, inbound'ы слушают только `127.0.0.1`
+- [x] 5.6 Транслятор модели в конфиг **sing-box**: outbound на каждый протокол, inbound mixed (socks + http)
+- [x] 5.7 Транслятор модели в конфиг **Xray**: outbound на каждый протокол, inbound socks
+- [x] 5.8 Транслятор модели в конфиг **mihomo** (YAML): outbound `wireguard` с `amnezia-wg-option` для AmneziaWG, inbound mixed. Сначала проверить, какие параметры AWG 2.0 поддерживает текущая версия mihomo. Если не все — встроить `amneziawg-go` с userspace-стеком (netstack) как отдельное мини-ядро
+- [x] 5.9 Вместо golden-файлов каждый сгенерированный конфиг из набора (все протоколы и транспорты) прогоняется через `sing-box check`, `xray run -test` и `mihomo -t`. В CI ядра скачиваются и кешируются
+- [x] 5.10 Трафик и скорость берутся из Clash API sing-box: он всегда стоит первым в цепочке, поэтому stats API Xray и mihomo не нужны
+- [x] 5.11 Матрица возможностей: протокол + транспорт → список ядер в порядке приоритета (например `xhttp → [xray]`, `hysteria2 → [sing-box]`, `amneziawg → [mihomo]`, `vless+reality+tcp → [sing-box, xray]`)
+- [x] 5.12 Выбор ядра в режиме `AUTO` по матрице, ручное переопределение пользователем
+- [x] 5.13 Цепочка: sing-box держит TUN или mixed inbound, а outbound `socks → 127.0.0.1:N` ведёт в Xray или mihomo, если сервер требует их
+- [x] 5.14 Интеграционный тест без Docker: серверы на loopback поднимают сами sing-box (Shadowsocks, Hysteria2 с самоподписанным сертификатом) и Xray (VLESS+XHTTP). HTTP-запрос проходит через все три ядра, включая цепочки через Xray и mihomo. Отдельно проверены восстановление после убийства ядра и ошибка запуска. Сервера AmneziaWG нет: для AWG проверяется только `mihomo -t`
 
 **Готово, когда:** любой сервер из подписки поднимается правильным ядром в виде локального прокси.
 
@@ -179,7 +179,7 @@
 - [ ] 6.18 LAN и приватные сети всегда напрямую
 - [ ] 6.19 Пользовательские правила: домен / суффикс / IP-CIDR / процесс → proxy / direct / block
 - [ ] 6.20 Правила по приложениям (split tunneling): `process_name` / `process_path` в TUN
-- [ ] 6.21 CLI: `beryl connect [server|--auto] [--mode tun|proxy] [--core …]`, `beryl disconnect`, `beryl status [--watch]`, `beryl mode`, `beryl rules`
+- [ ] 6.21 CLI (`connect <server> [--core]`, `disconnect`, `status`, `test` уже есть с фазы 5 для режима локального прокси; остаётся `--mode` и `--auto`): `beryl connect [server|--auto] [--mode tun|proxy] [--core …]`, `beryl disconnect`, `beryl status [--watch]`, `beryl mode`, `beryl rules`
 
 ### 6E. Профили маршрутизации Happ/INCY (правила от провайдера)
 

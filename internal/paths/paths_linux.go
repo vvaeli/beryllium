@@ -5,6 +5,7 @@ func Default() Paths {
 	return Paths{
 		StateDir: "/var/lib/beryllium",
 		LogDir:   "/var/log/beryllium",
+		CoresDir: "/usr/lib/beryllium/cores",
 		Socket:   "/run/beryllium/beryllium.sock",
 	}
 }

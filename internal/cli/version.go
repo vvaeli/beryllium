@@ -42,8 +42,14 @@ func (a *app) versionCmd() *cobra.Command {
 			}
 			fmt.Fprintf(a.out, "%-11s %s (%s, %s) %s/%s\n", "berylliumd",
 				dv.GetVersion(), dv.GetCommit(), dv.GetBuildDate(), dv.GetOs(), dv.GetArch())
-			for _, core := range dv.GetCores() {
-				fmt.Fprintf(a.out, "  %-9s %s\n", core.GetKind(), core.GetVersion())
+			for _, c := range dv.GetCores() {
+				v := c.GetVersion()
+				if !c.GetInstalled() {
+					v = "not installed"
+				} else if v == "" {
+					v = "installed"
+				}
+				fmt.Fprintf(a.out, "  %-9s %s\n", coreName(c.GetKind()), v)
 			}
 			return nil
 		},

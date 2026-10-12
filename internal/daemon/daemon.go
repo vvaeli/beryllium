@@ -12,6 +12,7 @@ import (
 	"time"
 
 	berylliumv1 "github.com/vvaeli/beryllium/gen/go/beryllium/v1"
+	"github.com/vvaeli/beryllium/internal/core"
 	"github.com/vvaeli/beryllium/internal/ipc"
 	"github.com/vvaeli/beryllium/internal/paths"
 	"github.com/vvaeli/beryllium/internal/store"
@@ -48,6 +49,7 @@ type Daemon struct {
 	userAgent string
 	started   time.Time
 	subs      *subscription.Manager
+	rt        *core.Runtime
 
 	shutdownOnce sync.Once
 	shutdownCh   chan struct{}
@@ -80,6 +82,15 @@ func (d *Daemon) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	bins := core.LoadBinaries(d.paths.CoresDir)
+	for _, k := range core.Kinds {
+		if !bins.Installed(k) {
+			d.log.Warn("core not installed", "core", k, "dir", d.paths.CoresDir)
+		}
+	}
+	d.rt = core.New(core.Options{Binaries: bins, WorkDir: d.paths.StateDir, Log: d.log})
+	defer d.rt.Close()
 
 	ln, err := ipc.Listen(d.paths.Socket, ipc.Access{
 		UIDs:   cfg.AllowedUIDs,
@@ -137,8 +148,8 @@ func (d *Daemon) requestShutdown() {
 func (d *Daemon) register(s *grpc.Server) {
 	berylliumv1.RegisterDaemonServiceServer(s, &daemonService{d: d})
 	berylliumv1.RegisterSubscriptionServiceServer(s, &subscriptionService{subs: d.subs})
-	berylliumv1.RegisterConnectionServiceServer(s, &connectionService{})
-	berylliumv1.RegisterTestServiceServer(s, &testService{})
+	berylliumv1.RegisterConnectionServiceServer(s, &connectionService{rt: d.rt, subs: d.subs})
+	berylliumv1.RegisterTestServiceServer(s, &testService{rt: d.rt})
 	berylliumv1.RegisterSettingsServiceServer(s, &settingsService{})
 	berylliumv1.RegisterLogServiceServer(s, &logService{})
 	berylliumv1.RegisterRoutingServiceServer(s, &routingService{})

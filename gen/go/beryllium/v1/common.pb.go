@@ -30,6 +30,9 @@ const (
 	Mode_MODE_TUN Mode = 1
 	// OS-level HTTP/SOCKS proxy settings; only proxy-aware apps are covered.
 	Mode_MODE_SYSTEM_PROXY Mode = 2
+	// Only the local HTTP/SOCKS5 proxy; nothing on the system is changed.
+	// Apps must be pointed at ConnectionStatus.local_proxy manually.
+	Mode_MODE_LOCAL_PROXY Mode = 3
 )
 
 // Enum value maps for Mode.
@@ -38,11 +41,13 @@ var (
 		0: "MODE_UNSPECIFIED",
 		1: "MODE_TUN",
 		2: "MODE_SYSTEM_PROXY",
+		3: "MODE_LOCAL_PROXY",
 	}
 	Mode_value = map[string]int32{
 		"MODE_UNSPECIFIED":  0,
 		"MODE_TUN":          1,
 		"MODE_SYSTEM_PROXY": 2,
+		"MODE_LOCAL_PROXY":  3,
 	}
 )
 
@@ -451,11 +456,12 @@ const file_beryllium_v1_common_proto_rawDesc = "" +
 	"\x19beryllium/v1/common.proto\x12\fberyllium.v1\"Z\n" +
 	"\vErrorDetail\x121\n" +
 	"\x06reason\x18\x01 \x01(\x0e2\x19.beryllium.v1.ErrorReasonR\x06reason\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage*A\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage*W\n" +
 	"\x04Mode\x12\x14\n" +
 	"\x10MODE_UNSPECIFIED\x10\x00\x12\f\n" +
 	"\bMODE_TUN\x10\x01\x12\x15\n" +
-	"\x11MODE_SYSTEM_PROXY\x10\x02*{\n" +
+	"\x11MODE_SYSTEM_PROXY\x10\x02\x12\x14\n" +
+	"\x10MODE_LOCAL_PROXY\x10\x03*{\n" +
 	"\bCoreKind\x12\x19\n" +
 	"\x15CORE_KIND_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eCORE_KIND_AUTO\x10\x01\x12\x16\n" +

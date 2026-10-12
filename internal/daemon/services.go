@@ -6,6 +6,7 @@ import (
 	"time"
 
 	berylliumv1 "github.com/vvaeli/beryllium/gen/go/beryllium/v1"
+	"github.com/vvaeli/beryllium/internal/core"
 	"github.com/vvaeli/beryllium/internal/version"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
@@ -22,8 +23,17 @@ func (s *daemonService) GetVersion(context.Context, *berylliumv1.GetVersionReque
 		BuildDate: version.Date,
 		Os:        runtime.GOOS,
 		Arch:      runtime.GOARCH,
-		// Cores are reported once the core manager exists (ROADMAP 5.x).
+		Cores:     s.cores(),
 	}, nil
+}
+
+func (s *daemonService) cores() []*berylliumv1.CoreInfo {
+	bins := core.LoadBinaries(s.d.paths.CoresDir)
+	var out []*berylliumv1.CoreInfo
+	for _, k := range core.Kinds {
+		out = append(out, &berylliumv1.CoreInfo{Kind: kindToProto[k], Version: bins.Version(k), Installed: bins.Installed(k)})
+	}
+	return out
 }
 
 func (s *daemonService) Health(context.Context, *berylliumv1.HealthRequest) (*berylliumv1.HealthResponse, error) {
@@ -40,16 +50,8 @@ func (s *daemonService) Shutdown(context.Context, *berylliumv1.ShutdownRequest) 
 	return &berylliumv1.ShutdownResponse{}, nil
 }
 
-// Services below are implemented in later phases (ROADMAP 4–7) and return
+// Services below are implemented in later phases (ROADMAP 6–7) and return
 // codes.Unimplemented until then.
-
-type connectionService struct {
-	berylliumv1.UnimplementedConnectionServiceServer
-}
-
-type testService struct {
-	berylliumv1.UnimplementedTestServiceServer
-}
 
 type settingsService struct {
 	berylliumv1.UnimplementedSettingsServiceServer

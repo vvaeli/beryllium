@@ -9,6 +9,9 @@ enum Mode {
   MODE_TUN = 1;
   // OS-level HTTP/SOCKS proxy settings; only proxy-aware apps are covered.
   MODE_SYSTEM_PROXY = 2;
+  // Only the local HTTP/SOCKS5 proxy; nothing on the system is changed.
+  // Apps must be pointed at ConnectionStatus.local_proxy manually.
+  MODE_LOCAL_PROXY = 3;
 }
 
 // Proxy core that carries the traffic. UNSPECIFIED is treated as AUTO.

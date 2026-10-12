@@ -47,8 +47,8 @@ type SubscriptionServiceClient interface {
 	// as a LOCAL subscription.
 	ImportConfig(ctx context.Context, in *ImportConfigRequest, opts ...grpc.CallOption) (*ImportConfigResponse, error)
 	// Returns a shareable link (for copying or a QR code) to a subscription,
-	// a single server or a routing profile. The result is a secret: frontends request it only on
-	// an explicit user action and never log or cache it.
+	// a single server or a routing profile. The result is a secret: frontends
+	// request it only on an explicit user action and never log or cache it.
 	GetShareLink(ctx context.Context, in *GetShareLinkRequest, opts ...grpc.CallOption) (*GetShareLinkResponse, error)
 }
 
@@ -167,8 +167,8 @@ type SubscriptionServiceServer interface {
 	// as a LOCAL subscription.
 	ImportConfig(context.Context, *ImportConfigRequest) (*ImportConfigResponse, error)
 	// Returns a shareable link (for copying or a QR code) to a subscription,
-	// a single server or a routing profile. The result is a secret: frontends request it only on
-	// an explicit user action and never log or cache it.
+	// a single server or a routing profile. The result is a secret: frontends
+	// request it only on an explicit user action and never log or cache it.
 	GetShareLink(context.Context, *GetShareLinkRequest) (*GetShareLinkResponse, error)
 	mustEmbedUnimplementedSubscriptionServiceServer()
 }

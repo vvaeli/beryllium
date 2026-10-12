@@ -12,7 +12,12 @@ func Default() Paths {
 		base = `C:\ProgramData`
 	}
 	dir := filepath.Join(base, "Beryllium")
+	cores := filepath.Join(dir, "cores")
+	if exe, err := os.Executable(); err == nil {
+		cores = filepath.Join(filepath.Dir(exe), "cores")
+	}
 	return Paths{
+		CoresDir: cores,
 		StateDir: dir,
 		LogDir:   filepath.Join(dir, "logs"),
 		Socket:   `\\.\pipe\beryllium`,

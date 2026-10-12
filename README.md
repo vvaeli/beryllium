@@ -73,9 +73,9 @@ sudo usermod -aG beryllium $USER
 ```sh
 beryl sub add 'https://…/sub/…' --name main   # добавить подписку
 beryl servers                                  # список серверов
-beryl connect --auto                           # подключиться к лучшему серверу
-beryl connect <server> --mode tun              # конкретный сервер в режиме TUN
-beryl status --watch                           # статус в реальном времени
+beryl connect <server>                         # подключиться (имя, часть имени или ID)
+beryl status                                   # статус, ядро, локальный прокси, трафик
+beryl test                                     # проверить связь через туннель
 beryl disconnect
 beryl sub qr <id>                              # QR-код подписки прямо в терминале
 ```

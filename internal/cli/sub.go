@@ -3,7 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
+	"io"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -325,6 +325,6 @@ func every(d time.Duration) string {
 }
 
 // secretWarning goes to stderr so piping the link stays clean.
-func secretWarning() {
-	fmt.Fprintln(os.Stderr, "warning: this is a secret — anyone with it can use your VPN. Don't post it publicly.")
+func secretWarning(w io.Writer) {
+	fmt.Fprintln(w, "warning: this is a secret — anyone with it can use your VPN. Don't post it publicly.")
 }

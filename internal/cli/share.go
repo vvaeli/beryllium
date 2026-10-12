@@ -39,7 +39,7 @@ func (a *app) shareCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return a.emitSecret(uri, qr, png)
+			return a.emitSecret(cmd.ErrOrStderr(), uri, qr, png)
 		},
 	}
 	cmd.Flags().BoolVar(&qr, "qr", false, "show a QR code instead of the link")
@@ -71,7 +71,7 @@ func (a *app) subQRCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return a.emitSecret(uri, !showLink, png)
+			return a.emitSecret(cmd.ErrOrStderr(), uri, !showLink, png)
 		},
 	}
 	cmd.Flags().StringVar(&png, "png", "", "write the QR code to a PNG file instead")
@@ -79,8 +79,8 @@ func (a *app) subQRCmd() *cobra.Command {
 	return cmd
 }
 
-func (a *app) emitSecret(uri string, qr bool, png string) error {
-	secretWarning()
+func (a *app) emitSecret(errOut io.Writer, uri string, qr bool, png string) error {
+	secretWarning(errOut)
 	switch {
 	case png != "":
 		data, err := qrcode.Encode(uri, qrcode.Medium, 768)

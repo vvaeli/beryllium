@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Phases 0–4 (scaffolding, proto API, daemon skeleton, minimal CLI, subscriptions) are done; everything else is design agreed with the user before implementation. `ROADMAP.md` is the step-by-step plan from empty repo to 1.0, with numbered steps (e.g. `7.10`): follow its order, tick `[x]` when a step is done, and reference step numbers in commits. 
+Phases 0–5 (scaffolding, proto API, daemon skeleton, minimal CLI, subscriptions, core manager) are done; everything else is design agreed with the user before implementation. `ROADMAP.md` is the step-by-step plan from empty repo to 1.0, with numbered steps (e.g. `7.10`): follow its order, tick `[x]` when a step is done, and reference step numbers in commits. 
 
 ## Commands
 
@@ -14,7 +14,9 @@ Phases 0–4 (scaffolding, proto API, daemon skeleton, minimal CLI, subscription
 - `just run-daemon` runs the daemon unprivileged with state, logs and socket in `.dev/`
 - `just gen` formats protos and regenerates `gen/go` (committed; CI fails if it is stale). `just breaking` checks proto changes against `main`
 - buf, protoc-gen-go and protoc-gen-go-grpc are tool deps in the separate `tools/go.mod` module and run via `go tool -modfile=tools/go.mod <tool>`. Don't install them globally, and don't add tool deps to the root `go.mod`
-- `just fetch-cores` / `gui-dev` are placeholders until ROADMAP 5.2 / 9.1
+- `just fetch-cores` (`go -C tools run ./fetchcores`) downloads the cores pinned in `cores/versions.json` into `cores/bin/<goos>-<goarch>/` with SHA-256 checks. `just bump-cores` re-pins to the latest releases. Tests in `internal/core` and `internal/cli` that need real cores skip when they're missing, so fetch cores locally to run them
+- `just gui-dev` is a placeholder until ROADMAP 9.1
+- Never run `mihomo` without `-d <dir>`: it silently creates `~/.config/mihomo`
 
 Module path: `github.com/vvaeli/beryllium`. License: GPL-3.0.
 
@@ -68,6 +70,14 @@ Beryllium is a cross-platform desktop proxy/VPN client for Arch Linux, macOS and
 - `internal/subscription`: `ParseBody` detects base64/plain link lists, Clash YAML, sing-box JSON and Xray JSON (single or array). Routing lines (`happ://routing/...`) are collected, not treated as servers. `Fetcher` never puts the URL into errors and wraps failures in `ErrFetch`. `Manager` keeps the last good servers when a refresh fails and runs auto-update (user interval > `profile-update-interval` header > 12h)
 - gRPC mapping (`internal/daemon/subscriptions.go`): download failures map to `FailedPrecondition`, never `Unavailable`, which clients read as "daemon unreachable"
 - Default subscription User-Agent is Happ-compatible (`daemon.DefaultUserAgent`), so panels send Happ extras such as the `routing` header. Override with `berylliumd -user-agent`
+
+## Cores (phase 5)
+
+- `internal/core`: cores are subprocesses (`Process`). Linux uses Pdeathsig, Windows a kill-on-close Job Object, macOS a pid file plus `killOrphans` on start. **sing-box always fronts the chain** with the mixed inbound (default `127.0.0.1:2080`) and the Clash API (traffic stats). Xray and mihomo run behind it on a loopback SOCKS/mixed port
+- Core choice: `Choose` walks `Kinds` (sing-box → xray → mihomo) and asks each translator's `*Supports`. Whatever a core can't do must be rejected there, so `Choose` explains why (`Status.Reason`). Known gaps: sing-box has no XHTTP, tcp header obfs, AmneziaWG or Hysteria2 cert pinning. Xray dropped `allowInsecure` and the HTTP/2 transport. mihomo is wired only for WireGuard/AWG/Hysteria2/TUIC
+- After changing a translator, run `go test ./internal/core`. `TestConfigsPassCoreCheck` feeds every config in `corpus` through the real core's checker, and `TestRuntimeEndToEnd` proxies real traffic through loopback servers run by the cores themselves
+- `Runtime` restarts crashed cores with backoff (default 5 per 2 min, then `failed`). Generated configs hold credentials: `<state>/run/*.json|yaml`, mode 0600
+- `MODE_LOCAL_PROXY` (local proxy only, nothing changed on the system) is the only mode implemented. TUN and system proxy come in phase 6
 
 ## Daemon internals
 

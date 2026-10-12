@@ -55,5 +55,12 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+      - name: Cache cores
+        uses: actions/cache@v4
+        with:
+          path: cores/bin
+          key: cores-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('cores/versions.json') }}
+      # Core-dependent tests (config checks, end-to-end chains) skip without these.
+      - run: go -C tools run ./fetchcores
       - run: go build ./...
       - run: go test -race ./...

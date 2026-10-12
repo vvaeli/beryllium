@@ -77,9 +77,9 @@ func TestDaemonLifecycle(t *testing.T) {
 		t.Fatalf("Health = %v, %v", h, err)
 	}
 
-	_, err = berylliumv1.NewConnectionServiceClient(conn).GetStatus(ctx, &berylliumv1.GetStatusRequest{})
+	_, err = berylliumv1.NewSettingsServiceClient(conn).GetSettings(ctx, &berylliumv1.GetSettingsRequest{})
 	if status.Code(err) != codes.Unimplemented {
-		t.Errorf("GetStatus err = %v, want Unimplemented", err)
+		t.Errorf("GetSettings err = %v, want Unimplemented", err)
 	}
 
 	if _, err := client.Shutdown(ctx, &berylliumv1.ShutdownRequest{}); err != nil {

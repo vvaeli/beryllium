@@ -35,13 +35,19 @@ fmt:
 breaking:
     {{buf}} breaking --against '.git#branch=main'
 
+platform := `go env GOOS` + "-" + `go env GOARCH`
+
 # Run the daemon unprivileged with state in ./.dev (no TUN/system changes)
 run-daemon *args:
-    go run ./cmd/berylliumd -foreground -config-dir .dev/state -log-dir .dev/logs -socket .dev/d.sock {{args}}
+    go run ./cmd/berylliumd -foreground -config-dir .dev/state -log-dir .dev/logs -socket .dev/d.sock -cores-dir cores/bin/{{platform}} {{args}}
 
-# Download pinned core binaries (phase 5)
-fetch-cores:
-    @echo "not implemented yet (ROADMAP 5.2)"
+# Download pinned cores (cores/versions.json) into cores/bin/<os>-<arch>; pass "-platform all" for every OS
+fetch-cores *args:
+    go -C tools run ./fetchcores {{args}}
+
+# Update cores/versions.json to the latest releases
+bump-cores:
+    go -C tools run ./fetchcores -bump
 
 # GUI dev mode (phase 9)
 gui-dev:

@@ -76,7 +76,8 @@ func newRoot(out io.Writer) *cobra.Command {
 	f.BoolVar(&a.json, "json", false, "machine-readable JSON output")
 	f.DurationVar(&a.timeout, "timeout", 10*time.Second, "timeout for daemon requests")
 
-	root.AddCommand(a.versionCmd(), a.subCmd(), a.serversCmd(), a.importCmd(), a.shareCmd())
+	root.AddCommand(a.versionCmd(), a.subCmd(), a.serversCmd(), a.importCmd(), a.shareCmd(),
+		a.connectCmd(), a.disconnectCmd(), a.statusCmd(), a.testCmd())
 	return root
 }
 

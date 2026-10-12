@@ -511,7 +511,9 @@ type ConnectionStatus struct {
 	Traffic        *TrafficStats          `protobuf:"bytes,7,opt,name=traffic,proto3" json:"traffic,omitempty"`
 	Recovery       *RecoveryStats         `protobuf:"bytes,8,opt,name=recovery,proto3" json:"recovery,omitempty"`
 	// Set in FAILED state.
-	Error         *ErrorDetail `protobuf:"bytes,9,opt,name=error,proto3" json:"error,omitempty"`
+	Error *ErrorDetail `protobuf:"bytes,9,opt,name=error,proto3" json:"error,omitempty"`
+	// host:port of the local mixed (HTTP + SOCKS5) proxy while connected.
+	LocalProxy    string `protobuf:"bytes,10,opt,name=local_proxy,json=localProxy,proto3" json:"local_proxy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -607,6 +609,13 @@ func (x *ConnectionStatus) GetError() *ErrorDetail {
 		return x.Error
 	}
 	return nil
+}
+
+func (x *ConnectionStatus) GetLocalProxy() string {
+	if x != nil {
+		return x.LocalProxy
+	}
+	return ""
 }
 
 type TrafficStats struct {
@@ -766,7 +775,7 @@ const file_beryllium_v1_connection_proto_rawDesc = "" +
 	"\x06status\x18\x01 \x01(\v2\x1e.beryllium.v1.ConnectionStatusR\x06status\"\x14\n" +
 	"\x12WatchStatusRequest\"M\n" +
 	"\x13WatchStatusResponse\x126\n" +
-	"\x06status\x18\x01 \x01(\v2\x1e.beryllium.v1.ConnectionStatusR\x06status\"\xcf\x03\n" +
+	"\x06status\x18\x01 \x01(\v2\x1e.beryllium.v1.ConnectionStatusR\x06status\"\xf0\x03\n" +
 	"\x10ConnectionStatus\x123\n" +
 	"\x05state\x18\x01 \x01(\x0e2\x1d.beryllium.v1.ConnectionStateR\x05state\x12&\n" +
 	"\x04mode\x18\x02 \x01(\x0e2\x12.beryllium.v1.ModeR\x04mode\x12,\n" +
@@ -777,7 +786,10 @@ const file_beryllium_v1_connection_proto_rawDesc = "" +
 	"\x0fconnected_since\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x0econnectedSince\x124\n" +
 	"\atraffic\x18\a \x01(\v2\x1a.beryllium.v1.TrafficStatsR\atraffic\x127\n" +
 	"\brecovery\x18\b \x01(\v2\x1b.beryllium.v1.RecoveryStatsR\brecovery\x12/\n" +
-	"\x05error\x18\t \x01(\v2\x19.beryllium.v1.ErrorDetailR\x05error\"\xd4\x01\n" +
+	"\x05error\x18\t \x01(\v2\x19.beryllium.v1.ErrorDetailR\x05error\x12\x1f\n" +
+	"\vlocal_proxy\x18\n" +
+	" \x01(\tR\n" +
+	"localProxy\"\xd4\x01\n" +
 	"\fTrafficStats\x12/\n" +
 	"\x14upload_bytes_per_sec\x18\x01 \x01(\x04R\x11uploadBytesPerSec\x123\n" +
 	"\x16download_bytes_per_sec\x18\x02 \x01(\x04R\x13downloadBytesPerSec\x12,\n" +

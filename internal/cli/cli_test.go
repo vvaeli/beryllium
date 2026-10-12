@@ -33,7 +33,7 @@ func startDaemon(t *testing.T) string {
 		sock = fmt.Sprintf(`\\.\pipe\beryllium-cli-test-%d`, time.Now().UnixNano())
 	}
 	d := daemon.New(daemon.Options{
-		Paths: paths.Paths{StateDir: filepath.Join(dir, "state"), LogDir: dir, Socket: sock},
+		Paths: paths.Paths{StateDir: filepath.Join(dir, "state"), LogDir: dir, Socket: sock, CoresDir: repoCores()},
 		Log:   slog.New(slog.NewTextHandler(io.Discard, nil)),
 	})
 	ctx, cancel := context.WithCancel(context.Background())
@@ -52,6 +52,11 @@ func startDaemon(t *testing.T) string {
 		t.Fatal(err)
 	}
 	return sock
+}
+
+func repoCores() string {
+	dir, _ := filepath.Abs(filepath.Join("..", "..", "cores", "bin", runtime.GOOS+"-"+runtime.GOARCH))
+	return dir
 }
 
 func run(args ...string) (code int, stdout, stderr string) {

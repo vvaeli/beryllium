@@ -81,6 +81,8 @@ message ConnectionStatus {
   RecoveryStats recovery = 8;
   // Set in FAILED state.
   ErrorDetail error = 9;
+  // host:port of the local mixed (HTTP + SOCKS5) proxy while connected.
+  string local_proxy = 10;
 }
 
 message TrafficStats {
