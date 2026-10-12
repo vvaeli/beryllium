@@ -135,6 +135,9 @@ func lastLine(s string) string {
 	return s
 }
 
+// quietLog drops output of short-lived helper cores (latency tests).
+var quietLog = slog.New(slog.DiscardHandler)
+
 // freePort returns a currently free loopback TCP port.
 func freePort() (int, error) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")

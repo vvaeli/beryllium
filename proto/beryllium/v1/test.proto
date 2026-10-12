@@ -12,9 +12,29 @@ service TestService {
   rpc UrlTest(UrlTestRequest) returns (UrlTestResponse);
 }
 
+// How server latency is measured.
+enum PingMethod {
+  PING_METHOD_UNSPECIFIED = 0;
+  // HTTP GET to a test URL through the server (the full proxy chain).
+  // UNSPECIFIED means HTTP.
+  PING_METHOD_HTTP = 1;
+  // TCP handshake to the server's address:port, without the proxy.
+  // Not applicable to UDP-based protocols (Hysteria2, TUIC, WireGuard).
+  PING_METHOD_TCP = 2;
+  // ICMP echo to the server's host.
+  PING_METHOD_ICMP = 3;
+}
+
 message PingServersRequest {
-  // Empty pings all servers.
+  // Servers to ping. Empty means all servers of subscription_id, or all
+  // servers if that is empty too.
   repeated string server_ids = 1;
+  PingMethod method = 2;
+  // Test URL for HTTP; empty uses http://www.gstatic.com/generate_204.
+  string url = 3;
+  // Per-server timeout; default 5s.
+  google.protobuf.Duration timeout = 4;
+  string subscription_id = 5;
 }
 
 message PingServersResponse {

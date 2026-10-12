@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/spf13/cobra"
 	berylliumv1 "github.com/vvaeli/beryllium/gen/go/beryllium/v1"
@@ -14,7 +16,8 @@ import (
 )
 
 func (a *app) serversCmd() *cobra.Command {
-	return &cobra.Command{
+	var sortBy string
+	cmd := &cobra.Command{
 		Use:   "servers [<subscription>]",
 		Short: "List servers of all or one subscription",
 		Args:  cobra.MaximumNArgs(1),
@@ -32,24 +35,61 @@ func (a *app) serversCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				if a.json {
-					return printProtoList(a, resp.GetServers())
+				servers := resp.GetServers()
+				switch sortBy {
+				case "", "none":
+				case "latency":
+					// Measured first by latency, then failed, then untested.
+					rank := func(s *berylliumv1.Server) (int, time.Duration) {
+						switch {
+						case s.GetLatency() != nil:
+							return 0, s.GetLatency().AsDuration()
+						case s.GetLatencyTestedAt() != nil:
+							return 1, 0
+						}
+						return 2, 0
+					}
+					sort.SliceStable(servers, func(i, j int) bool {
+						ri, li := rank(servers[i])
+						rj, lj := rank(servers[j])
+						return ri < rj || (ri == rj && li < lj)
+					})
+				case "name":
+					sort.SliceStable(servers, func(i, j int) bool { return servers[i].GetName() < servers[j].GetName() })
+				default:
+					return fmt.Errorf("unknown sort %q (want latency or name)", sortBy)
 				}
-				if len(resp.GetServers()) == 0 {
+				if a.json {
+					return printProtoList(a, servers)
+				}
+				if len(servers) == 0 {
 					fmt.Fprintln(a.out, "no servers; add a subscription with: beryl sub add <url>")
 					return nil
 				}
 				w := tabwriter.NewWriter(a.out, 0, 0, 2, ' ', 0)
-				fmt.Fprintln(w, "ID\tNAME\tPROTOCOL\tTRANSPORT\tSECURITY\tADDRESS\tCOUNTRY")
-				for _, s := range resp.GetServers() {
-					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s:%d\t%s\n", s.GetId(), s.GetName(),
+				fmt.Fprintln(w, "ID\tNAME\tPROTOCOL\tTRANSPORT\tSECURITY\tADDRESS\tCOUNTRY\tLATENCY")
+				for _, s := range servers {
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s:%d\t%s\t%s\n", s.GetId(), s.GetName(),
 						enumName(s.GetProtocol().String(), "PROTOCOL_"), enumName(s.GetTransport().String(), "TRANSPORT_"),
-						enumName(s.GetSecurity().String(), "SECURITY_"), s.GetAddress(), s.GetPort(), dash(s.GetCountryCode()))
+						enumName(s.GetSecurity().String(), "SECURITY_"), s.GetAddress(), s.GetPort(), dash(s.GetCountryCode()),
+						latency(s))
 				}
 				return w.Flush()
 			})
 		},
 	}
+	cmd.Flags().StringVar(&sortBy, "sort", "", "sort by: latency (last `beryl ping` HTTP test), name")
+	return cmd
+}
+
+func latency(s *berylliumv1.Server) string {
+	switch {
+	case s.GetLatency() != nil:
+		return fmt.Sprintf("%d ms", s.GetLatency().AsDuration().Milliseconds())
+	case s.GetLatencyTestedAt() != nil:
+		return "fail"
+	}
+	return "-"
 }
 
 func (a *app) importCmd() *cobra.Command {

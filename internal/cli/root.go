@@ -77,7 +77,7 @@ func newRoot(out io.Writer) *cobra.Command {
 	f.DurationVar(&a.timeout, "timeout", 10*time.Second, "timeout for daemon requests")
 
 	root.AddCommand(a.versionCmd(), a.subCmd(), a.serversCmd(), a.importCmd(), a.shareCmd(),
-		a.connectCmd(), a.disconnectCmd(), a.statusCmd(), a.testCmd())
+		a.connectCmd(), a.disconnectCmd(), a.statusCmd(), a.testCmd(), a.pingCmd())
 	return root
 }
 

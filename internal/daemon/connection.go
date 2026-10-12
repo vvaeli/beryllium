@@ -17,8 +17,9 @@ import (
 
 type connectionService struct {
 	berylliumv1.UnimplementedConnectionServiceServer
-	rt   *core.Runtime
-	subs *subscription.Manager
+	rt      *core.Runtime
+	subs    *subscription.Manager
+	latency *latencyCache
 
 	mu    sync.Mutex
 	subID string // subscription of the connected server
@@ -89,7 +90,7 @@ func (s *connectionService) status(ctx context.Context) *berylliumv1.ConnectionS
 	}
 	if st.Server != nil {
 		s.mu.Lock()
-		p.Server = serverToProto(*st.Server, s.subID)
+		p.Server = s.latency.annotate(serverToProto(*st.Server, s.subID))
 		s.mu.Unlock()
 	}
 	if !st.Since.IsZero() {
@@ -125,7 +126,10 @@ func coreErr(err error) error {
 
 type testService struct {
 	berylliumv1.UnimplementedTestServiceServer
-	rt *core.Runtime
+	rt      *core.Runtime
+	subs    *subscription.Manager
+	pinger  *core.Pinger
+	latency *latencyCache
 }
 
 //nolint:revive // name is fixed by the generated gRPC interface

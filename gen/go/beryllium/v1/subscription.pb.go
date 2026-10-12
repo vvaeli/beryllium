@@ -292,7 +292,8 @@ type Server struct {
 	// ISO 3166-1 alpha-2, empty if unknown.
 	CountryCode string `protobuf:"bytes,9,opt,name=country_code,json=countryCode,proto3" json:"country_code,omitempty"`
 	// Cores able to run this server, best first.
-	SupportedCores  []CoreKind             `protobuf:"varint,10,rep,packed,name=supported_cores,json=supportedCores,proto3,enum=beryllium.v1.CoreKind" json:"supported_cores,omitempty"`
+	SupportedCores []CoreKind `protobuf:"varint,10,rep,packed,name=supported_cores,json=supportedCores,proto3,enum=beryllium.v1.CoreKind" json:"supported_cores,omitempty"`
+	// Last HTTP latency test through this server; unset if it failed or never ran.
 	Latency         *durationpb.Duration   `protobuf:"bytes,11,opt,name=latency,proto3" json:"latency,omitempty"`
 	LatencyTestedAt *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=latency_tested_at,json=latencyTestedAt,proto3" json:"latency_tested_at,omitempty"`
 	unknownFields   protoimpl.UnknownFields

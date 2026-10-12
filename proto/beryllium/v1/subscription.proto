@@ -73,6 +73,7 @@ message Server {
   string country_code = 9;
   // Cores able to run this server, best first.
   repeated CoreKind supported_cores = 10;
+  // Last HTTP latency test through this server; unset if it failed or never ran.
   google.protobuf.Duration latency = 11;
   google.protobuf.Timestamp latency_tested_at = 12;
 }

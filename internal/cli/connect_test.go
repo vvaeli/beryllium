@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -37,13 +39,45 @@ func TestConnectWorkflow(t *testing.T) {
 		t.Helper()
 		code, out, errOut := run(append(args, "--socket", sock)...)
 		if code != 0 {
-			t.Fatalf("beryl %v: exit %d\n%s%s", args, code, out, errOut)
+			t.Fatalf("beryl %v: exit %d\nstdout:\n%s\nstderr:\n%s", args, code, out, errOut)
 		}
 		return out
 	}
 	mustRun("import", fmt.Sprintf("ss://YWVzLTEyOC1nY206cHc@127.0.0.1:%d#Local SS", port))
 
-	out := mustRun("connect", "local ss")
+	// A second, unreachable server for ping.
+	dead, _ := net.Listen("tcp", "127.0.0.1:0")
+	deadPort := dead.Addr().(*net.TCPAddr).Port
+	dead.Close()
+	mustRun("import", fmt.Sprintf("ss://YWVzLTEyOC1nY206cHc@127.0.0.1:%d#Dead SS", deadPort))
+
+	out := mustRun("servers")
+	if !strings.Contains(out, "LATENCY") {
+		t.Fatalf("servers: %s", out)
+	}
+	pingTarget := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(204) }))
+	defer pingTarget.Close()
+	out = mustRun("ping", "--url", pingTarget.URL, "--timeout-per-server", "2s")
+	if !strings.Contains(out, " ms  Local SS") || !strings.Contains(out, "fail  Dead SS") || !strings.Contains(out, "1/2 responded") {
+		t.Fatalf("http ping: %s", out)
+	}
+	out = mustRun("ping", "--method", "tcp")
+	if !strings.Contains(out, " ms  Local SS") || !strings.Contains(out, "fail  Dead SS") || !strings.Contains(out, "fastest: Local SS") {
+		t.Fatalf("tcp ping: %s", out)
+	}
+	if out = mustRun("ping", "local", "--method", "icmp"); !strings.Contains(out, " ms  Local SS") && !strings.Contains(out, "not permitted") {
+		t.Fatalf("icmp ping: %s", out)
+	}
+	// Only HTTP results feed the latency column: refresh it after tcp/icmp.
+	mustRun("ping", "--url", pingTarget.URL, "--timeout-per-server", "2s")
+	out = mustRun("servers", "--sort", "latency")
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 3 || !strings.Contains(lines[1], "Local SS") || !strings.HasSuffix(strings.TrimSpace(lines[2]), "fail") {
+		t.Fatalf("servers --sort latency:\n%s", out)
+	}
+	mustRun("sub", "rm", "Dead SS")
+
+	out = mustRun("connect", "local ss")
 	if !strings.Contains(out, "connected") || !strings.Contains(out, "sing-box") || !strings.Contains(out, "proxy:    127.0.0.1:") {
 		t.Fatalf("connect: %s", out)
 	}

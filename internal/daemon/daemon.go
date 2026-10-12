@@ -50,6 +50,8 @@ type Daemon struct {
 	started   time.Time
 	subs      *subscription.Manager
 	rt        *core.Runtime
+	pinger    *core.Pinger
+	latency   *latencyCache
 
 	shutdownOnce sync.Once
 	shutdownCh   chan struct{}
@@ -90,6 +92,8 @@ func (d *Daemon) Run(ctx context.Context) error {
 		}
 	}
 	d.rt = core.New(core.Options{Binaries: bins, WorkDir: d.paths.StateDir, Log: d.log})
+	d.pinger = &core.Pinger{Binaries: bins, WorkDir: d.paths.StateDir}
+	d.latency = newLatencyCache()
 	defer d.rt.Close()
 
 	ln, err := ipc.Listen(d.paths.Socket, ipc.Access{
@@ -147,9 +151,9 @@ func (d *Daemon) requestShutdown() {
 
 func (d *Daemon) register(s *grpc.Server) {
 	berylliumv1.RegisterDaemonServiceServer(s, &daemonService{d: d})
-	berylliumv1.RegisterSubscriptionServiceServer(s, &subscriptionService{subs: d.subs})
-	berylliumv1.RegisterConnectionServiceServer(s, &connectionService{rt: d.rt, subs: d.subs})
-	berylliumv1.RegisterTestServiceServer(s, &testService{rt: d.rt})
+	berylliumv1.RegisterSubscriptionServiceServer(s, &subscriptionService{subs: d.subs, latency: d.latency})
+	berylliumv1.RegisterConnectionServiceServer(s, &connectionService{rt: d.rt, subs: d.subs, latency: d.latency})
+	berylliumv1.RegisterTestServiceServer(s, &testService{rt: d.rt, subs: d.subs, pinger: d.pinger, latency: d.latency})
 	berylliumv1.RegisterSettingsServiceServer(s, &settingsService{})
 	berylliumv1.RegisterLogServiceServer(s, &logService{})
 	berylliumv1.RegisterRoutingServiceServer(s, &routingService{})

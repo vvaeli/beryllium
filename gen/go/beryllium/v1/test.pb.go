@@ -22,12 +22,77 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// How server latency is measured.
+type PingMethod int32
+
+const (
+	PingMethod_PING_METHOD_UNSPECIFIED PingMethod = 0
+	// HTTP GET to a test URL through the server (the full proxy chain).
+	// UNSPECIFIED means HTTP.
+	PingMethod_PING_METHOD_HTTP PingMethod = 1
+	// TCP handshake to the server's address:port, without the proxy.
+	// Not applicable to UDP-based protocols (Hysteria2, TUIC, WireGuard).
+	PingMethod_PING_METHOD_TCP PingMethod = 2
+	// ICMP echo to the server's host.
+	PingMethod_PING_METHOD_ICMP PingMethod = 3
+)
+
+// Enum value maps for PingMethod.
+var (
+	PingMethod_name = map[int32]string{
+		0: "PING_METHOD_UNSPECIFIED",
+		1: "PING_METHOD_HTTP",
+		2: "PING_METHOD_TCP",
+		3: "PING_METHOD_ICMP",
+	}
+	PingMethod_value = map[string]int32{
+		"PING_METHOD_UNSPECIFIED": 0,
+		"PING_METHOD_HTTP":        1,
+		"PING_METHOD_TCP":         2,
+		"PING_METHOD_ICMP":        3,
+	}
+)
+
+func (x PingMethod) Enum() *PingMethod {
+	p := new(PingMethod)
+	*p = x
+	return p
+}
+
+func (x PingMethod) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PingMethod) Descriptor() protoreflect.EnumDescriptor {
+	return file_beryllium_v1_test_proto_enumTypes[0].Descriptor()
+}
+
+func (PingMethod) Type() protoreflect.EnumType {
+	return &file_beryllium_v1_test_proto_enumTypes[0]
+}
+
+func (x PingMethod) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PingMethod.Descriptor instead.
+func (PingMethod) EnumDescriptor() ([]byte, []int) {
+	return file_beryllium_v1_test_proto_rawDescGZIP(), []int{0}
+}
+
 type PingServersRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Empty pings all servers.
-	ServerIds     []string `protobuf:"bytes,1,rep,name=server_ids,json=serverIds,proto3" json:"server_ids,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Servers to ping. Empty means all servers of subscription_id, or all
+	// servers if that is empty too.
+	ServerIds []string   `protobuf:"bytes,1,rep,name=server_ids,json=serverIds,proto3" json:"server_ids,omitempty"`
+	Method    PingMethod `protobuf:"varint,2,opt,name=method,proto3,enum=beryllium.v1.PingMethod" json:"method,omitempty"`
+	// Test URL for HTTP; empty uses http://www.gstatic.com/generate_204.
+	Url string `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
+	// Per-server timeout; default 5s.
+	Timeout        *durationpb.Duration `protobuf:"bytes,4,opt,name=timeout,proto3" json:"timeout,omitempty"`
+	SubscriptionId string               `protobuf:"bytes,5,opt,name=subscription_id,json=subscriptionId,proto3" json:"subscription_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *PingServersRequest) Reset() {
@@ -65,6 +130,34 @@ func (x *PingServersRequest) GetServerIds() []string {
 		return x.ServerIds
 	}
 	return nil
+}
+
+func (x *PingServersRequest) GetMethod() PingMethod {
+	if x != nil {
+		return x.Method
+	}
+	return PingMethod_PING_METHOD_UNSPECIFIED
+}
+
+func (x *PingServersRequest) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *PingServersRequest) GetTimeout() *durationpb.Duration {
+	if x != nil {
+		return x.Timeout
+	}
+	return nil
+}
+
+func (x *PingServersRequest) GetSubscriptionId() string {
+	if x != nil {
+		return x.SubscriptionId
+	}
+	return ""
 }
 
 type PingServersResponse struct {
@@ -237,10 +330,14 @@ var File_beryllium_v1_test_proto protoreflect.FileDescriptor
 
 const file_beryllium_v1_test_proto_rawDesc = "" +
 	"\n" +
-	"\x17beryllium/v1/test.proto\x12\fberyllium.v1\x1a\x19beryllium/v1/common.proto\x1a\x1egoogle/protobuf/duration.proto\"3\n" +
+	"\x17beryllium/v1/test.proto\x12\fberyllium.v1\x1a\x19beryllium/v1/common.proto\x1a\x1egoogle/protobuf/duration.proto\"\xd5\x01\n" +
 	"\x12PingServersRequest\x12\x1d\n" +
 	"\n" +
-	"server_ids\x18\x01 \x03(\tR\tserverIds\"\x98\x01\n" +
+	"server_ids\x18\x01 \x03(\tR\tserverIds\x120\n" +
+	"\x06method\x18\x02 \x01(\x0e2\x18.beryllium.v1.PingMethodR\x06method\x12\x10\n" +
+	"\x03url\x18\x03 \x01(\tR\x03url\x123\n" +
+	"\atimeout\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\atimeout\x12'\n" +
+	"\x0fsubscription_id\x18\x05 \x01(\tR\x0esubscriptionId\"\x98\x01\n" +
 	"\x13PingServersResponse\x12\x1b\n" +
 	"\tserver_id\x18\x01 \x01(\tR\bserverId\x123\n" +
 	"\alatency\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\alatency\x12/\n" +
@@ -250,7 +347,13 @@ const file_beryllium_v1_test_proto_rawDesc = "" +
 	"\x0fUrlTestResponse\x12\x0e\n" +
 	"\x02ok\x18\x01 \x01(\bR\x02ok\x123\n" +
 	"\alatency\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\alatency\x12/\n" +
-	"\x05error\x18\x03 \x01(\v2\x19.beryllium.v1.ErrorDetailR\x05error2\xab\x01\n" +
+	"\x05error\x18\x03 \x01(\v2\x19.beryllium.v1.ErrorDetailR\x05error*j\n" +
+	"\n" +
+	"PingMethod\x12\x1b\n" +
+	"\x17PING_METHOD_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10PING_METHOD_HTTP\x10\x01\x12\x13\n" +
+	"\x0fPING_METHOD_TCP\x10\x02\x12\x14\n" +
+	"\x10PING_METHOD_ICMP\x10\x032\xab\x01\n" +
 	"\vTestService\x12T\n" +
 	"\vPingServers\x12 .beryllium.v1.PingServersRequest\x1a!.beryllium.v1.PingServersResponse0\x01\x12F\n" +
 	"\aUrlTest\x12\x1c.beryllium.v1.UrlTestRequest\x1a\x1d.beryllium.v1.UrlTestResponseB\xab\x01\n" +
@@ -268,29 +371,33 @@ func file_beryllium_v1_test_proto_rawDescGZIP() []byte {
 	return file_beryllium_v1_test_proto_rawDescData
 }
 
+var file_beryllium_v1_test_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_beryllium_v1_test_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_beryllium_v1_test_proto_goTypes = []any{
-	(*PingServersRequest)(nil),  // 0: beryllium.v1.PingServersRequest
-	(*PingServersResponse)(nil), // 1: beryllium.v1.PingServersResponse
-	(*UrlTestRequest)(nil),      // 2: beryllium.v1.UrlTestRequest
-	(*UrlTestResponse)(nil),     // 3: beryllium.v1.UrlTestResponse
-	(*durationpb.Duration)(nil), // 4: google.protobuf.Duration
-	(*ErrorDetail)(nil),         // 5: beryllium.v1.ErrorDetail
+	(PingMethod)(0),             // 0: beryllium.v1.PingMethod
+	(*PingServersRequest)(nil),  // 1: beryllium.v1.PingServersRequest
+	(*PingServersResponse)(nil), // 2: beryllium.v1.PingServersResponse
+	(*UrlTestRequest)(nil),      // 3: beryllium.v1.UrlTestRequest
+	(*UrlTestResponse)(nil),     // 4: beryllium.v1.UrlTestResponse
+	(*durationpb.Duration)(nil), // 5: google.protobuf.Duration
+	(*ErrorDetail)(nil),         // 6: beryllium.v1.ErrorDetail
 }
 var file_beryllium_v1_test_proto_depIdxs = []int32{
-	4, // 0: beryllium.v1.PingServersResponse.latency:type_name -> google.protobuf.Duration
-	5, // 1: beryllium.v1.PingServersResponse.error:type_name -> beryllium.v1.ErrorDetail
-	4, // 2: beryllium.v1.UrlTestResponse.latency:type_name -> google.protobuf.Duration
-	5, // 3: beryllium.v1.UrlTestResponse.error:type_name -> beryllium.v1.ErrorDetail
-	0, // 4: beryllium.v1.TestService.PingServers:input_type -> beryllium.v1.PingServersRequest
-	2, // 5: beryllium.v1.TestService.UrlTest:input_type -> beryllium.v1.UrlTestRequest
-	1, // 6: beryllium.v1.TestService.PingServers:output_type -> beryllium.v1.PingServersResponse
-	3, // 7: beryllium.v1.TestService.UrlTest:output_type -> beryllium.v1.UrlTestResponse
-	6, // [6:8] is the sub-list for method output_type
-	4, // [4:6] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0, // 0: beryllium.v1.PingServersRequest.method:type_name -> beryllium.v1.PingMethod
+	5, // 1: beryllium.v1.PingServersRequest.timeout:type_name -> google.protobuf.Duration
+	5, // 2: beryllium.v1.PingServersResponse.latency:type_name -> google.protobuf.Duration
+	6, // 3: beryllium.v1.PingServersResponse.error:type_name -> beryllium.v1.ErrorDetail
+	5, // 4: beryllium.v1.UrlTestResponse.latency:type_name -> google.protobuf.Duration
+	6, // 5: beryllium.v1.UrlTestResponse.error:type_name -> beryllium.v1.ErrorDetail
+	1, // 6: beryllium.v1.TestService.PingServers:input_type -> beryllium.v1.PingServersRequest
+	3, // 7: beryllium.v1.TestService.UrlTest:input_type -> beryllium.v1.UrlTestRequest
+	2, // 8: beryllium.v1.TestService.PingServers:output_type -> beryllium.v1.PingServersResponse
+	4, // 9: beryllium.v1.TestService.UrlTest:output_type -> beryllium.v1.UrlTestResponse
+	8, // [8:10] is the sub-list for method output_type
+	6, // [6:8] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_beryllium_v1_test_proto_init() }
@@ -304,13 +411,14 @@ func file_beryllium_v1_test_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_beryllium_v1_test_proto_rawDesc), len(file_beryllium_v1_test_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_beryllium_v1_test_proto_goTypes,
 		DependencyIndexes: file_beryllium_v1_test_proto_depIdxs,
+		EnumInfos:         file_beryllium_v1_test_proto_enumTypes,
 		MessageInfos:      file_beryllium_v1_test_proto_msgTypes,
 	}.Build()
 	File_beryllium_v1_test_proto = out.File

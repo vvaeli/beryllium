@@ -36,10 +36,45 @@ func xraySupports(s *model.Server) error {
 // xrayConfig builds an Xray config with a loopback SOCKS inbound on
 // socksPort and srv as the only outbound.
 func xrayConfig(s *model.Server, socksPort int, logLevel string) ([]byte, error) {
+	return xrayMultiConfig([]*model.Server{s}, []int{socksPort}, logLevel)
+}
+
+// xrayMultiConfig maps the SOCKS inbound on ports[i] to servers[i].
+func xrayMultiConfig(servers []*model.Server, ports []int, logLevel string) ([]byte, error) {
+	var inbounds, outbounds, rules []any
+	for i, s := range servers {
+		out, err := xrayOutbound(s)
+		if err != nil {
+			return nil, err
+		}
+		in, tag := fmt.Sprintf("in-%d", i), fmt.Sprintf("proxy-%d", i)
+		if len(servers) == 1 {
+			in, tag = "socks-in", "proxy"
+		}
+		out["tag"] = tag
+		outbounds = append(outbounds, out)
+		inbounds = append(inbounds, map[string]any{
+			"tag": in, "listen": "127.0.0.1", "port": ports[i], "protocol": "socks",
+			"settings": map[string]any{"auth": "noauth", "udp": true, "ip": "127.0.0.1"},
+		})
+		rules = append(rules, map[string]any{"type": "field", "inboundTag": []string{in}, "outboundTag": tag})
+	}
+	cfg := map[string]any{
+		"log":       map[string]any{"loglevel": logLevel},
+		"inbounds":  inbounds,
+		"outbounds": outbounds,
+	}
+	if len(servers) > 1 {
+		cfg["routing"] = map[string]any{"rules": rules}
+	}
+	return json.MarshalIndent(cfg, "", "  ")
+}
+
+func xrayOutbound(s *model.Server) (map[string]any, error) {
 	if err := xraySupports(s); err != nil {
 		return nil, err
 	}
-	out := map[string]any{"tag": "proxy", "protocol": string(s.Protocol)}
+	out := map[string]any{"protocol": string(s.Protocol)}
 	switch s.Protocol {
 	case model.VLESS:
 		user := map[string]any{"id": s.UUID, "encryption": orDefault(s.Encryption, "none")}
@@ -61,15 +96,7 @@ func xrayConfig(s *model.Server, socksPort int, logLevel string) ([]byte, error)
 		}
 		out["streamSettings"] = stream
 	}
-	cfg := map[string]any{
-		"log": map[string]any{"loglevel": logLevel},
-		"inbounds": []any{map[string]any{
-			"tag": "socks-in", "listen": "127.0.0.1", "port": socksPort, "protocol": "socks",
-			"settings": map[string]any{"auth": "noauth", "udp": true, "ip": "127.0.0.1"},
-		}},
-		"outbounds": []any{out},
-	}
-	return json.MarshalIndent(cfg, "", "  ")
+	return out, nil
 }
 
 func xrayStream(s *model.Server) (map[string]any, error) {

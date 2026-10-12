@@ -19,7 +19,8 @@ import (
 
 type subscriptionService struct {
 	berylliumv1.UnimplementedSubscriptionServiceServer
-	subs *subscription.Manager
+	subs    *subscription.Manager
+	latency *latencyCache
 }
 
 func (s *subscriptionService) AddSubscription(ctx context.Context, req *berylliumv1.AddSubscriptionRequest) (*berylliumv1.AddSubscriptionResponse, error) {
@@ -84,7 +85,7 @@ func (s *subscriptionService) ListServers(_ context.Context, req *berylliumv1.Li
 	if req.GetSubscriptionId() == "" {
 		for _, r := range s.subs.List() {
 			for _, srv := range r.Servers {
-				resp.Servers = append(resp.Servers, serverToProto(*srv, r.ID))
+				resp.Servers = append(resp.Servers, s.latency.annotate(serverToProto(*srv, r.ID)))
 			}
 		}
 		return resp, nil
@@ -94,7 +95,7 @@ func (s *subscriptionService) ListServers(_ context.Context, req *berylliumv1.Li
 		return nil, subErr(err)
 	}
 	for _, srv := range servers {
-		resp.Servers = append(resp.Servers, serverToProto(srv, req.GetSubscriptionId()))
+		resp.Servers = append(resp.Servers, s.latency.annotate(serverToProto(srv, req.GetSubscriptionId())))
 	}
 	return resp, nil
 }

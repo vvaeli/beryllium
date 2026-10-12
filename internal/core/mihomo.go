@@ -22,10 +22,54 @@ func mihomoSupports(s *model.Server) error {
 // mihomoConfig builds a mihomo config with a loopback mixed inbound on
 // port and srv as the only proxy.
 func mihomoConfig(s *model.Server, port int, logLevel string) ([]byte, error) {
+	p, err := mihomoProxy(s, "proxy")
+	if err != nil {
+		return nil, err
+	}
+	cfg := mihomoBase(logLevel)
+	cfg["mixed-port"] = port
+	cfg["proxies"] = []any{p}
+	cfg["rules"] = []string{"MATCH,proxy"}
+	return yaml.Marshal(cfg)
+}
+
+// mihomoMultiConfig exposes servers[i] on a mixed listener at ports[i].
+func mihomoMultiConfig(servers []*model.Server, ports []int, logLevel string) ([]byte, error) {
+	var proxies, listeners []any
+	for i, s := range servers {
+		name := fmt.Sprintf("proxy-%d", i)
+		p, err := mihomoProxy(s, name)
+		if err != nil {
+			return nil, err
+		}
+		proxies = append(proxies, p)
+		listeners = append(listeners, map[string]any{"name": fmt.Sprintf("in-%d", i), "type": "mixed",
+			"listen": "127.0.0.1", "port": ports[i], "proxy": name})
+	}
+	cfg := mihomoBase(logLevel)
+	cfg["proxies"] = proxies
+	cfg["listeners"] = listeners
+	cfg["rules"] = []string{"MATCH,DIRECT"}
+	return yaml.Marshal(cfg)
+}
+
+func mihomoBase(logLevel string) map[string]any {
+	return map[string]any{
+		"bind-address":    "127.0.0.1",
+		"allow-lan":       false,
+		"mode":            "rule",
+		"log-level":       logLevel,
+		"ipv6":            true,
+		"geo-auto-update": false,
+		"profile":         map[string]any{"store-selected": false, "store-fake-ip": false},
+	}
+}
+
+func mihomoProxy(s *model.Server, name string) (map[string]any, error) {
 	if err := mihomoSupports(s); err != nil {
 		return nil, err
 	}
-	p := map[string]any{"name": "proxy", "server": s.Address, "port": int(s.Port), "udp": true}
+	p := map[string]any{"name": name, "server": s.Address, "port": int(s.Port), "udp": true}
 	switch s.Protocol {
 	case model.WireGuard, model.AmneziaWG:
 		wg := s.WireGuard
@@ -87,19 +131,7 @@ func mihomoConfig(s *model.Server, port int, logLevel string) ([]byte, error) {
 		}
 		mihomoTLS(p, s.TLS)
 	}
-	cfg := map[string]any{
-		"mixed-port":      port,
-		"bind-address":    "127.0.0.1",
-		"allow-lan":       false,
-		"mode":            "rule",
-		"log-level":       logLevel,
-		"ipv6":            true,
-		"geo-auto-update": false,
-		"profile":         map[string]any{"store-selected": false, "store-fake-ip": false},
-		"proxies":         []any{p},
-		"rules":           []string{"MATCH,proxy"},
-	}
-	return yaml.Marshal(cfg)
+	return p, nil
 }
 
 func mihomoTLS(p map[string]any, t *model.TLS) {
