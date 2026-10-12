@@ -9,6 +9,9 @@ service DaemonService {
   rpc GetVersion(GetVersionRequest) returns (GetVersionResponse);
   rpc Health(HealthRequest) returns (HealthResponse);
   rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
+  // Debugging: runs the watchdog's handling of an event without the event
+  // happening (ROADMAP 7.17). Returns once the event was handled.
+  rpc SimulateEvent(SimulateEventRequest) returns (SimulateEventResponse);
 }
 
 message GetVersionRequest {}
@@ -38,3 +41,20 @@ message HealthResponse {
 message ShutdownRequest {}
 
 message ShutdownResponse {}
+
+enum SimulatedEvent {
+  SIMULATED_EVENT_UNSPECIFIED = 0;
+  // The machine is about to sleep: connections are closed.
+  SIMULATED_EVENT_SLEEP = 1;
+  // The machine woke up: wait for the network, reset, check, recover.
+  SIMULATED_EVENT_WAKE = 2;
+  SIMULATED_EVENT_NETWORK_CHANGE = 3;
+  // A periodic health check, now.
+  SIMULATED_EVENT_HEALTH_CHECK = 4;
+}
+
+message SimulateEventRequest {
+  SimulatedEvent event = 1;
+}
+
+message SimulateEventResponse {}

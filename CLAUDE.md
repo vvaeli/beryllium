@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Phases 0–6 (scaffolding, proto API, daemon skeleton, minimal CLI, subscriptions, core manager, modes/DNS/routing) are done, except 6.7–6.9 (TUN verified by hand on each OS as root); everything else is design agreed with the user before implementation. `ROADMAP.md` is the step-by-step plan from empty repo to 1.0, with numbered steps (e.g. `7.10`): follow its order, tick `[x]` when a step is done, and reference step numbers in commits. 
+Phases 0–7 (scaffolding, proto API, daemon skeleton, minimal CLI, subscriptions, core manager, modes/DNS/routing, reliability) are done, except 6.9 (TUN on real Windows) and 7.19–7.20 (manual sleep checklist, soak test); everything else is design agreed with the user before implementation. `ROADMAP.md` is the step-by-step plan from empty repo to 1.0, with numbered steps (e.g. `7.10`): follow its order, tick `[x]` when a step is done, and reference step numbers in commits. 
 
 ## Commands
 
@@ -100,6 +100,13 @@ Beryllium is a cross-platform desktop proxy/VPN client for Arch Linux, macOS and
 - `internal/routing`: Happ/INCY profiles (`Decode`, `ParseJSON`, `Link`), Xray rule syntax, a protowire reader for `geosite.dat`/`geoip.dat`, `GeoCache` (INCY algorithm: `<url>.sha256`, else `LastUpdated`; downloads bypass the tunnel) and `Build` → `Plan` (route rules, rule-sets compiled by `sing-box rule-set compile`, DNS). Rule order: IPv6 reject (`PreRules`, before sniff so TUN refuses instead of resetting) → user rules → LAN direct → profile groups in `RouteOrder` → final. Builtin presets are ordinary profiles (`presets.go`)
 - `internal/sysproxy`: Capture → persist marker (`sysproxy.json`) → Apply; Restore on disconnect, mode change and next start. macOS `networksetup` (system-wide); Linux changes the **calling user's** settings (GNOME, KDE and the session environment for Hyprland/niri/sway), running commands as that user with their session bus; Windows re-runs `berylliumd sysproxy-helper` in the console user's session (SYSTEM can't change per-user WinINet). Tests swap the package-level `run`/`lookPath`; never touch the real system proxy in tests
 - **Linux must stay init- and desktop-agnostic** (Arch + Hyprland, Artix + runit/OpenRC/dinit/s6 + niri, GNOME/KDE): no hard systemd dependency in the daemon; `berylliumd install` detects PID 1 (`cmd/berylliumd/initsys_linux.go`); service files for every init live in `packaging/linux/`
+
+## Reliability (phase 7)
+
+- `internal/watchdog`: OS-independent state machine (Connected → Degraded → Recovering → Connected | Failed) behind a `Target` interface, unit-tested with a fake clock. Recovery ladder: reset connections → restart core → switch server (only if auto-selected) → switch core (only if not user-picked) → Failed with backoff (30s → 10m). The ladder never runs while the direct network is offline or captive; that is Degraded with NETWORK_UNAVAILABLE / CAPTIVE_PORTAL. Wake and network change: wait for the network (30s), flush OS DNS, reset connections and probe; the ladder runs only if that fails. That keeps DarkWake cheap. A second wake without a sleep in between is ignored
+- The probe goes through a dedicated `probe-in` inbound routed straight to `proxy`, so routing profiles that send `generate_204` direct don't hide a dead tunnel
+- `internal/netwatch`: default route per OS (`/proc/net/route`, `x/net/route`, `GetAdaptersAddresses`), change kicks (netlink, route socket, `NotifyIpInterfaceChange`), sleep/wake (logind `PrepareForSleep` + delay inhibitor, IOKit via cgo in `power_darwin.c`, `PowerRegisterSuspendResumeNotification`), clock-jump detection as a fallback, and `Check`: direct `generate_204` with sockets bound to the physical interface (SO_BINDTODEVICE / IP_BOUND_IF / IP_UNICAST_IF), so it bypasses TUN. A network change means the default-route interface, gateway or addresses changed; TUN's own routes must not count (`tun-e2e` checks this). OS callbacks are registered once per process and fanned out, because tests run several daemons
+- `daemon.Options{ProbeURLs, Reach, NoSystemEvents}` keep CLI tests hermetic. `beryl debug simulate sleep|wake|netchange|check` (hidden; `SimulateEvent` RPC) drives the watchdog synchronously
 
 ## Routing
 

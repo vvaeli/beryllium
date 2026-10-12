@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -57,6 +58,10 @@ func singBoxSupports(s *model.Server) error {
 // singBoxFront describes the sing-box front of a chain.
 type singBoxFront struct {
 	MixedPort int
+	// ProbePort is a second mixed inbound that always goes through the
+	// proxy outbound, so the watchdog tests the tunnel whatever the
+	// routing profile sends direct (0: none).
+	ProbePort int
 	APIPort   int
 	APISecret string
 	LogLevel  string
@@ -83,6 +88,16 @@ type TUN struct {
 // tunAddresses are private ranges sing-box uses for its TUN interface.
 var tunAddresses = []string{"172.19.0.1/30", "fdfe:dcba:9876::1/126"}
 
+// TUNPrefixes are the TUN interface's ranges, so network monitoring can
+// tell the TUN from the physical network.
+func TUNPrefixes() []netip.Prefix {
+	var out []netip.Prefix
+	for _, a := range tunAddresses {
+		out = append(out, netip.MustParsePrefix(a).Masked())
+	}
+	return out
+}
+
 func singBoxConfig(f singBoxFront) ([]byte, error) {
 	var proxy map[string]any
 	if f.Server != nil {
@@ -99,6 +114,12 @@ func singBoxConfig(f singBoxFront) ([]byte, error) {
 		"type": "mixed", "tag": "mixed-in", "listen": "127.0.0.1", "listen_port": f.MixedPort,
 	}}
 	var rules []any
+	if f.ProbePort != 0 {
+		inbounds = append(inbounds, map[string]any{
+			"type": "mixed", "tag": "probe-in", "listen": "127.0.0.1", "listen_port": f.ProbePort,
+		})
+		rules = append(rules, map[string]any{"inbound": "probe-in", "action": "route", "outbound": routing.TagProxy})
+	}
 	if f.Routing != nil {
 		rules = append(rules, f.Routing.PreRules...)
 	}

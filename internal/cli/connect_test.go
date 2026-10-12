@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/vvaeli/beryllium/internal/core"
 )
@@ -158,6 +159,49 @@ func TestConnectWorkflow(t *testing.T) {
 	if out = mustRun("mode"); strings.TrimSpace(out) != "local" {
 		t.Fatalf("mode: %s", out)
 	}
+	// Watchdog (ROADMAP 7.17): a wake resets connections and checks the
+	// tunnel; a health check of a healthy tunnel changes nothing.
+	if out = mustRun("debug", "simulate", "check"); !strings.Contains(out, "state:    connected") || strings.Contains(out, "recovery:") {
+		t.Fatalf("simulate check: %s", out)
+	}
+	if out = mustRun("debug", "simulate", "wake"); !strings.Contains(out, "state:    connected") ||
+		!strings.Contains(out, "recovery: 1; last after wake: closed stale connections") {
+		t.Fatalf("simulate wake: %s", out)
+	}
+	// The clock-jump detector reporting the same wake changes nothing.
+	if out = mustRun("debug", "simulate", "wake"); !strings.Contains(out, "recovery: 1;") {
+		t.Fatalf("duplicate wake: %s", out)
+	}
+	// Sleep closes connections and pauses checks until the wake.
+	mustRun("debug", "simulate", "sleep")
+	if out = mustRun("debug", "simulate", "wake"); !strings.Contains(out, "recovery: 2; last after wake") {
+		t.Fatalf("simulate wake after sleep: %s", out)
+	}
+	// The server dies: three failed checks start the ladder, which can't
+	// help (the server was picked by hand, so it isn't switched).
+	srv.Process.Kill()
+	srv.Wait()
+	for range 2 {
+		if out = mustRun("debug", "simulate", "check"); !strings.Contains(out, "state:    degraded") {
+			t.Fatalf("check with the server down: %s", out)
+		}
+	}
+	if out = mustRun("debug", "simulate", "check"); !strings.Contains(out, "state:    failed") || !strings.Contains(out, "recovery failed") {
+		t.Fatalf("ladder with the server down: %s", out)
+	}
+	// The server comes back: the next check sees a healthy tunnel.
+	srv = exec.Command(bins.Path(core.SingBox), "run", "-c", filepath.Join(dir, "s.json"), "-D", dir)
+	if err := srv.Start(); err != nil {
+		t.Fatal(err)
+	}
+	waitListening(t, fmt.Sprintf("127.0.0.1:%d", port))
+	if out = mustRun("debug", "simulate", "check"); !strings.Contains(out, "state:    connected") {
+		t.Fatalf("check after the server returned: %s", out)
+	}
+	if out = mustRun("test", url); !strings.HasPrefix(out, "ok, ") {
+		t.Fatalf("test after recovery: %s", out)
+	}
+
 	if runtime.GOOS != "windows" && os.Geteuid() != 0 {
 		code, _, errOut := run("connect", "local ss", "--mode", "tun", "--socket", sock)
 		if code != 1 || !strings.Contains(errOut, "root") {
@@ -175,5 +219,21 @@ func TestConnectWorkflow(t *testing.T) {
 	}
 	if out = mustRun("version"); !strings.Contains(out, "sing-box  1.") || !strings.Contains(out, "mihomo") {
 		t.Fatalf("version: %s", out)
+	}
+}
+
+func waitListening(t *testing.T, addr string) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		c, err := net.Dial("tcp", addr)
+		if err == nil {
+			c.Close()
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("%s is not listening: %v", addr, err)
+		}
+		time.Sleep(50 * time.Millisecond)
 	}
 }

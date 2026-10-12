@@ -20,6 +20,7 @@ import (
 	"github.com/vvaeli/beryllium/internal/routing"
 	"github.com/vvaeli/beryllium/internal/subscription"
 	"github.com/vvaeli/beryllium/internal/sysproxy"
+	"github.com/vvaeli/beryllium/internal/watchdog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
@@ -40,10 +41,28 @@ type connector struct {
 	pinger   *core.Pinger
 	latency  *latencyCache
 
-	// mu serializes connect, disconnect and reconfigure.
+	wd *watchdog.Watchdog
+	// probeURLs and reach replace the public endpoints in hermetic tests.
+	probeURLs []string
+	reach     func(context.Context) watchdog.Reach
+
+	// mu serializes connect, disconnect, reconfigure and recovery.
 	mu    sync.Mutex
 	mode  berylliumv1.Mode
 	subID string
+	// up is true from a successful connect until disconnect, even while
+	// the runtime is down during recovery.
+	up bool
+	// The connection as last started, so recovery can restart it after
+	// the runtime gave up.
+	srv        model.Server
+	core       core.Kind
+	coreReason string
+	opts       core.ConnectOptions
+	// auto: the server was auto-selected (from subFilter's servers), so
+	// recovery may switch it.
+	auto      bool
+	subFilter string
 	// proxy is the applied OS proxy (nil when not set).
 	proxy *proxyMarker
 }
@@ -108,15 +127,24 @@ func (c *connector) connect(ctx context.Context, req *berylliumv1.ConnectRequest
 			opts.Core = "" // the preferred core can't run this server
 		}
 	}
-	if _, err := c.rt.Connect(ctx, srv, opts); err != nil {
-		c.restoreProxy(ctx)
+	st, err := c.rt.Connect(ctx, srv, opts)
+	if err != nil {
+		// A request rejected up front (e.g. no capable core) leaves the
+		// running connection alone.
+		if _, running := c.rt.Options(); !running {
+			c.stopped(ctx)
+		}
 		return coreErr(err)
 	}
 	c.mode, c.subID = mode, subID
 	if err := c.syncProxy(ctx, owner(ctx)); err != nil {
 		c.rt.Disconnect()
+		c.stopped(ctx)
 		return withReason(codes.FailedPrecondition, berylliumv1.ErrorReason_ERROR_REASON_SYSTEM_PROXY_FAILED, err)
 	}
+	c.up, c.srv, c.core, c.coreReason, c.opts = true, srv, st.Core, st.Reason, opts
+	c.auto, c.subFilter = req.GetServerId() == "", req.GetSubscriptionId()
+	c.wd.Begin()
 	routing.PruneRuleSets(c.ruleSetDir(), opts.Routing)
 	return nil
 }
@@ -124,8 +152,22 @@ func (c *connector) connect(ctx context.Context, req *berylliumv1.ConnectRequest
 func (c *connector) disconnect(ctx context.Context) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.restoreProxy(ctx)
 	c.rt.Disconnect()
+	c.stopped(ctx)
+}
+
+// stopped forgets the connection; c.mu must be held.
+func (c *connector) stopped(ctx context.Context) {
+	c.restoreProxy(ctx)
+	c.up = false
+	c.wd.End()
+}
+
+func ownerOf(m *proxyMarker) sysproxy.Owner {
+	if m == nil {
+		return sysproxy.Owner{UID: -1}
+	}
+	return m.Owner
 }
 
 // reconfigure applies changed settings or routing to a live connection.
@@ -133,7 +175,7 @@ func (c *connector) disconnect(ctx context.Context) {
 func (c *connector) reconfigure(ctx context.Context, mode berylliumv1.Mode) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if _, ok := c.rt.Options(); !ok {
+	if !c.up {
 		return
 	}
 	if mode == berylliumv1.Mode_MODE_UNSPECIFIED {
@@ -144,17 +186,16 @@ func (c *connector) reconfigure(ctx context.Context, mode berylliumv1.Mode) {
 		c.log.Warn("reconfigure failed", "err", err)
 		return
 	}
-	if _, err := c.rt.Reconfigure(ctx, opts); err != nil {
+	opts.Core, opts.CoreReason = c.core, c.coreReason
+	st, err := c.rt.Connect(ctx, c.srv, opts)
+	if err != nil {
 		c.log.Warn("reconfigure failed", "err", err)
-		c.restoreProxy(ctx)
+		c.stopped(ctx)
 		return
 	}
-	c.mode = mode
-	o := sysproxy.Owner{UID: -1}
-	if c.proxy != nil {
-		o = c.proxy.Owner
-	}
-	if err := c.syncProxy(ctx, o); err != nil {
+	c.mode, c.opts, c.core, c.coreReason = mode, opts, st.Core, st.Reason
+	c.wd.Restarted()
+	if err := c.syncProxy(ctx, ownerOf(c.proxy)); err != nil {
 		c.log.Warn("system proxy failed after reconfigure", "err", err)
 	}
 	routing.PruneRuleSets(c.ruleSetDir(), opts.Routing)

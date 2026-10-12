@@ -56,6 +56,9 @@ type Status struct {
 type ConnectOptions struct {
 	// Core overrides automatic core selection.
 	Core Kind
+	// CoreReason replaces "chosen manually" when Core is set by the daemon
+	// rather than the user (keeping the core on reconfigure, recovery).
+	CoreReason string
 	// TUN captures all system traffic; needs root/Administrator.
 	TUN *TUN
 	// Routing is built by internal/routing; nil proxies everything.
@@ -102,6 +105,7 @@ type session struct {
 	opts      ConnectOptions
 	choice    Choice
 	mixedPort int
+	probePort int
 	backend   int
 	apiPort   int
 	apiSecret string
@@ -160,6 +164,9 @@ func (r *Runtime) Connect(ctx context.Context, srv model.Server, o ConnectOption
 	if o.TUN != nil && !privileged() {
 		return r.Status(), ErrTUNPrivileges
 	}
+	if o.Core != "" && o.CoreReason != "" {
+		choice.Reason = o.CoreReason
+	}
 	r.Disconnect()
 
 	r.mu.Lock()
@@ -205,7 +212,7 @@ func (r *Runtime) Reconfigure(ctx context.Context, o ConnectOptions) (Status, er
 		return r.Status(), nil
 	}
 	if o.Core == "" {
-		o.Core = s.choice.Kind
+		o.Core, o.CoreReason = s.choice.Kind, s.choice.Reason
 	}
 	return r.Connect(ctx, s.srv, o)
 }
@@ -259,12 +266,15 @@ func (r *Runtime) prepare(s *session) error {
 	if s.apiPort, err = freePort(); err != nil {
 		return err
 	}
+	if s.probePort, err = freePort(); err != nil {
+		return err
+	}
 	secret := make([]byte, 16)
 	_, _ = rand.Read(secret)
 	s.apiSecret = hex.EncodeToString(secret)
 
 	level := r.opts.CoreLogLevel
-	front := singBoxFront{MixedPort: s.mixedPort, APIPort: s.apiPort, APISecret: s.apiSecret, LogLevel: level,
+	front := singBoxFront{MixedPort: s.mixedPort, ProbePort: s.probePort, APIPort: s.apiPort, APISecret: s.apiSecret, LogLevel: level,
 		TUN: s.opts.TUN, Routing: s.opts.Routing}
 	if s.opts.TUN != nil {
 		front.DirectProcesses = r.directProcesses()
@@ -443,6 +453,86 @@ func (r *Runtime) Traffic(ctx context.Context) (Traffic, error) {
 	r.last = trafficSample{at: now, up: body.Up, down: body.Down}
 	r.mu.Unlock()
 	return t, nil
+}
+
+// ResetConnections closes every connection through the chain, so apps
+// reconnect over fresh sockets (after sleep or a network change).
+func (r *Runtime) ResetConnections(ctx context.Context) error {
+	r.mu.Lock()
+	s := r.sess
+	r.mu.Unlock()
+	if s == nil {
+		return errors.New("not connected")
+	}
+	req, _ := http.NewRequestWithContext(ctx, http.MethodDelete, fmt.Sprintf("http://127.0.0.1:%d/connections", s.apiPort), nil)
+	req.Header.Set("Authorization", "Bearer "+s.apiSecret)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("closing connections: HTTP %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// Probe checks the tunnel itself: it fetches urls (default
+// DefaultTestURLs) through the proxy outbound, bypassing routing, and
+// succeeds when any of them answers (ROADMAP 7.1).
+func (r *Runtime) Probe(ctx context.Context, urls []string) (time.Duration, error) {
+	r.mu.Lock()
+	s := r.sess
+	r.mu.Unlock()
+	if s == nil || s.probePort == 0 {
+		return 0, errors.New("not connected")
+	}
+	if len(urls) == 0 {
+		urls = DefaultTestURLs
+	}
+	proxy, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%d", s.probePort))
+	client := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxy), DisableKeepAlives: true}}
+	type result struct {
+		d   time.Duration
+		err error
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	results := make(chan result, len(urls))
+	for _, u := range urls {
+		go func() {
+			start := time.Now()
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+			if err != nil {
+				results <- result{err: err}
+				return
+			}
+			resp, err := client.Do(req)
+			if err != nil {
+				var ue *url.Error
+				if errors.As(err, &ue) {
+					err = ue.Err
+				}
+				results <- result{err: err}
+				return
+			}
+			resp.Body.Close()
+			if resp.StatusCode >= 400 {
+				results <- result{err: fmt.Errorf("HTTP %d", resp.StatusCode)}
+				return
+			}
+			results <- result{d: elapsed(start)}
+		}()
+	}
+	var lastErr error
+	for range urls {
+		res := <-results
+		if res.err == nil {
+			return res.d, nil
+		}
+		lastErr = res.err
+	}
+	return 0, lastErr
 }
 
 // DefaultTestURLs are probed by URLTest when no URL is given.

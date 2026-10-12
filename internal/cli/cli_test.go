@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -18,6 +20,7 @@ import (
 	"github.com/vvaeli/beryllium/internal/client"
 	"github.com/vvaeli/beryllium/internal/daemon"
 	"github.com/vvaeli/beryllium/internal/paths"
+	"github.com/vvaeli/beryllium/internal/watchdog"
 	"google.golang.org/grpc"
 )
 
@@ -56,10 +59,17 @@ func startDaemon(t *testing.T) string {
 			t.Logf("daemon log:\n%s", logs.String())
 		}
 	})
+	// The watchdog checks the tunnel against a loopback target instead of
+	// public endpoints, and the network counts as up.
+	probe := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(204) }))
+	t.Cleanup(probe.Close)
 	d := daemon.New(daemon.Options{
-		Paths:        paths.Paths{StateDir: filepath.Join(dir, "state"), LogDir: dir, Socket: sock, CoresDir: repoCores()},
-		Log:          slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
-		CoreLogLevel: "debug",
+		Paths:          paths.Paths{StateDir: filepath.Join(dir, "state"), LogDir: dir, Socket: sock, CoresDir: repoCores()},
+		Log:            slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
+		CoreLogLevel:   "debug",
+		ProbeURLs:      []string{probe.URL},
+		Reach:          func(context.Context) watchdog.Reach { return watchdog.Online },
+		NoSystemEvents: true,
 	})
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)

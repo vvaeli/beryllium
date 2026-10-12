@@ -119,6 +119,7 @@ func (s *connectionService) status(ctx context.Context) *berylliumv1.ConnectionS
 		}
 		p.Error = &berylliumv1.ErrorDetail{Reason: reason, Message: st.Err.Error()}
 	}
+	applyWatchdog(p, s.c.wd.Status())
 	if st.State == core.StateConnected {
 		// Generous: right after a start the Clash API can be slow on a busy
 		// machine, and missing counters look like a broken connection.

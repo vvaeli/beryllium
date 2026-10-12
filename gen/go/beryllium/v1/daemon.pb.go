@@ -22,6 +22,64 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type SimulatedEvent int32
+
+const (
+	SimulatedEvent_SIMULATED_EVENT_UNSPECIFIED SimulatedEvent = 0
+	// The machine is about to sleep: connections are closed.
+	SimulatedEvent_SIMULATED_EVENT_SLEEP SimulatedEvent = 1
+	// The machine woke up: wait for the network, reset, check, recover.
+	SimulatedEvent_SIMULATED_EVENT_WAKE           SimulatedEvent = 2
+	SimulatedEvent_SIMULATED_EVENT_NETWORK_CHANGE SimulatedEvent = 3
+	// A periodic health check, now.
+	SimulatedEvent_SIMULATED_EVENT_HEALTH_CHECK SimulatedEvent = 4
+)
+
+// Enum value maps for SimulatedEvent.
+var (
+	SimulatedEvent_name = map[int32]string{
+		0: "SIMULATED_EVENT_UNSPECIFIED",
+		1: "SIMULATED_EVENT_SLEEP",
+		2: "SIMULATED_EVENT_WAKE",
+		3: "SIMULATED_EVENT_NETWORK_CHANGE",
+		4: "SIMULATED_EVENT_HEALTH_CHECK",
+	}
+	SimulatedEvent_value = map[string]int32{
+		"SIMULATED_EVENT_UNSPECIFIED":    0,
+		"SIMULATED_EVENT_SLEEP":          1,
+		"SIMULATED_EVENT_WAKE":           2,
+		"SIMULATED_EVENT_NETWORK_CHANGE": 3,
+		"SIMULATED_EVENT_HEALTH_CHECK":   4,
+	}
+)
+
+func (x SimulatedEvent) Enum() *SimulatedEvent {
+	p := new(SimulatedEvent)
+	*p = x
+	return p
+}
+
+func (x SimulatedEvent) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SimulatedEvent) Descriptor() protoreflect.EnumDescriptor {
+	return file_beryllium_v1_daemon_proto_enumTypes[0].Descriptor()
+}
+
+func (SimulatedEvent) Type() protoreflect.EnumType {
+	return &file_beryllium_v1_daemon_proto_enumTypes[0]
+}
+
+func (x SimulatedEvent) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SimulatedEvent.Descriptor instead.
+func (SimulatedEvent) EnumDescriptor() ([]byte, []int) {
+	return file_beryllium_v1_daemon_proto_rawDescGZIP(), []int{0}
+}
+
 type GetVersionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -362,6 +420,86 @@ func (*ShutdownResponse) Descriptor() ([]byte, []int) {
 	return file_beryllium_v1_daemon_proto_rawDescGZIP(), []int{6}
 }
 
+type SimulateEventRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Event         SimulatedEvent         `protobuf:"varint,1,opt,name=event,proto3,enum=beryllium.v1.SimulatedEvent" json:"event,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SimulateEventRequest) Reset() {
+	*x = SimulateEventRequest{}
+	mi := &file_beryllium_v1_daemon_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SimulateEventRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SimulateEventRequest) ProtoMessage() {}
+
+func (x *SimulateEventRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_beryllium_v1_daemon_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SimulateEventRequest.ProtoReflect.Descriptor instead.
+func (*SimulateEventRequest) Descriptor() ([]byte, []int) {
+	return file_beryllium_v1_daemon_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SimulateEventRequest) GetEvent() SimulatedEvent {
+	if x != nil {
+		return x.Event
+	}
+	return SimulatedEvent_SIMULATED_EVENT_UNSPECIFIED
+}
+
+type SimulateEventResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SimulateEventResponse) Reset() {
+	*x = SimulateEventResponse{}
+	mi := &file_beryllium_v1_daemon_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SimulateEventResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SimulateEventResponse) ProtoMessage() {}
+
+func (x *SimulateEventResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_beryllium_v1_daemon_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SimulateEventResponse.ProtoReflect.Descriptor instead.
+func (*SimulateEventResponse) Descriptor() ([]byte, []int) {
+	return file_beryllium_v1_daemon_proto_rawDescGZIP(), []int{8}
+}
+
 var File_beryllium_v1_daemon_proto protoreflect.FileDescriptor
 
 const file_beryllium_v1_daemon_proto_rawDesc = "" +
@@ -385,12 +523,22 @@ const file_beryllium_v1_daemon_proto_rawDesc = "" +
 	"\x02ok\x18\x01 \x01(\bR\x02ok\x121\n" +
 	"\x06uptime\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\x06uptime\"\x11\n" +
 	"\x0fShutdownRequest\"\x12\n" +
-	"\x10ShutdownResponse2\xf0\x01\n" +
+	"\x10ShutdownResponse\"J\n" +
+	"\x14SimulateEventRequest\x122\n" +
+	"\x05event\x18\x01 \x01(\x0e2\x1c.beryllium.v1.SimulatedEventR\x05event\"\x17\n" +
+	"\x15SimulateEventResponse*\xac\x01\n" +
+	"\x0eSimulatedEvent\x12\x1f\n" +
+	"\x1bSIMULATED_EVENT_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15SIMULATED_EVENT_SLEEP\x10\x01\x12\x18\n" +
+	"\x14SIMULATED_EVENT_WAKE\x10\x02\x12\"\n" +
+	"\x1eSIMULATED_EVENT_NETWORK_CHANGE\x10\x03\x12 \n" +
+	"\x1cSIMULATED_EVENT_HEALTH_CHECK\x10\x042\xca\x02\n" +
 	"\rDaemonService\x12O\n" +
 	"\n" +
 	"GetVersion\x12\x1f.beryllium.v1.GetVersionRequest\x1a .beryllium.v1.GetVersionResponse\x12C\n" +
 	"\x06Health\x12\x1b.beryllium.v1.HealthRequest\x1a\x1c.beryllium.v1.HealthResponse\x12I\n" +
-	"\bShutdown\x12\x1d.beryllium.v1.ShutdownRequest\x1a\x1e.beryllium.v1.ShutdownResponseB\xad\x01\n" +
+	"\bShutdown\x12\x1d.beryllium.v1.ShutdownRequest\x1a\x1e.beryllium.v1.ShutdownResponse\x12X\n" +
+	"\rSimulateEvent\x12\".beryllium.v1.SimulateEventRequest\x1a#.beryllium.v1.SimulateEventResponseB\xad\x01\n" +
 	"\x10com.beryllium.v1B\vDaemonProtoP\x01Z;github.com/vvaeli/beryllium/gen/go/beryllium/v1;berylliumv1\xa2\x02\x03BXX\xaa\x02\fBeryllium.V1\xca\x02\fBeryllium\\V1\xe2\x02\x18Beryllium\\V1\\GPBMetadata\xea\x02\rBeryllium::V1b\x06proto3"
 
 var (
@@ -405,33 +553,40 @@ func file_beryllium_v1_daemon_proto_rawDescGZIP() []byte {
 	return file_beryllium_v1_daemon_proto_rawDescData
 }
 
-var file_beryllium_v1_daemon_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_beryllium_v1_daemon_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_beryllium_v1_daemon_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_beryllium_v1_daemon_proto_goTypes = []any{
-	(*GetVersionRequest)(nil),   // 0: beryllium.v1.GetVersionRequest
-	(*GetVersionResponse)(nil),  // 1: beryllium.v1.GetVersionResponse
-	(*CoreInfo)(nil),            // 2: beryllium.v1.CoreInfo
-	(*HealthRequest)(nil),       // 3: beryllium.v1.HealthRequest
-	(*HealthResponse)(nil),      // 4: beryllium.v1.HealthResponse
-	(*ShutdownRequest)(nil),     // 5: beryllium.v1.ShutdownRequest
-	(*ShutdownResponse)(nil),    // 6: beryllium.v1.ShutdownResponse
-	(CoreKind)(0),               // 7: beryllium.v1.CoreKind
-	(*durationpb.Duration)(nil), // 8: google.protobuf.Duration
+	(SimulatedEvent)(0),           // 0: beryllium.v1.SimulatedEvent
+	(*GetVersionRequest)(nil),     // 1: beryllium.v1.GetVersionRequest
+	(*GetVersionResponse)(nil),    // 2: beryllium.v1.GetVersionResponse
+	(*CoreInfo)(nil),              // 3: beryllium.v1.CoreInfo
+	(*HealthRequest)(nil),         // 4: beryllium.v1.HealthRequest
+	(*HealthResponse)(nil),        // 5: beryllium.v1.HealthResponse
+	(*ShutdownRequest)(nil),       // 6: beryllium.v1.ShutdownRequest
+	(*ShutdownResponse)(nil),      // 7: beryllium.v1.ShutdownResponse
+	(*SimulateEventRequest)(nil),  // 8: beryllium.v1.SimulateEventRequest
+	(*SimulateEventResponse)(nil), // 9: beryllium.v1.SimulateEventResponse
+	(CoreKind)(0),                 // 10: beryllium.v1.CoreKind
+	(*durationpb.Duration)(nil),   // 11: google.protobuf.Duration
 }
 var file_beryllium_v1_daemon_proto_depIdxs = []int32{
-	2, // 0: beryllium.v1.GetVersionResponse.cores:type_name -> beryllium.v1.CoreInfo
-	7, // 1: beryllium.v1.CoreInfo.kind:type_name -> beryllium.v1.CoreKind
-	8, // 2: beryllium.v1.HealthResponse.uptime:type_name -> google.protobuf.Duration
-	0, // 3: beryllium.v1.DaemonService.GetVersion:input_type -> beryllium.v1.GetVersionRequest
-	3, // 4: beryllium.v1.DaemonService.Health:input_type -> beryllium.v1.HealthRequest
-	5, // 5: beryllium.v1.DaemonService.Shutdown:input_type -> beryllium.v1.ShutdownRequest
-	1, // 6: beryllium.v1.DaemonService.GetVersion:output_type -> beryllium.v1.GetVersionResponse
-	4, // 7: beryllium.v1.DaemonService.Health:output_type -> beryllium.v1.HealthResponse
-	6, // 8: beryllium.v1.DaemonService.Shutdown:output_type -> beryllium.v1.ShutdownResponse
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	3,  // 0: beryllium.v1.GetVersionResponse.cores:type_name -> beryllium.v1.CoreInfo
+	10, // 1: beryllium.v1.CoreInfo.kind:type_name -> beryllium.v1.CoreKind
+	11, // 2: beryllium.v1.HealthResponse.uptime:type_name -> google.protobuf.Duration
+	0,  // 3: beryllium.v1.SimulateEventRequest.event:type_name -> beryllium.v1.SimulatedEvent
+	1,  // 4: beryllium.v1.DaemonService.GetVersion:input_type -> beryllium.v1.GetVersionRequest
+	4,  // 5: beryllium.v1.DaemonService.Health:input_type -> beryllium.v1.HealthRequest
+	6,  // 6: beryllium.v1.DaemonService.Shutdown:input_type -> beryllium.v1.ShutdownRequest
+	8,  // 7: beryllium.v1.DaemonService.SimulateEvent:input_type -> beryllium.v1.SimulateEventRequest
+	2,  // 8: beryllium.v1.DaemonService.GetVersion:output_type -> beryllium.v1.GetVersionResponse
+	5,  // 9: beryllium.v1.DaemonService.Health:output_type -> beryllium.v1.HealthResponse
+	7,  // 10: beryllium.v1.DaemonService.Shutdown:output_type -> beryllium.v1.ShutdownResponse
+	9,  // 11: beryllium.v1.DaemonService.SimulateEvent:output_type -> beryllium.v1.SimulateEventResponse
+	8,  // [8:12] is the sub-list for method output_type
+	4,  // [4:8] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_beryllium_v1_daemon_proto_init() }
@@ -445,13 +600,14 @@ func file_beryllium_v1_daemon_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_beryllium_v1_daemon_proto_rawDesc), len(file_beryllium_v1_daemon_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   7,
+			NumEnums:      1,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_beryllium_v1_daemon_proto_goTypes,
 		DependencyIndexes: file_beryllium_v1_daemon_proto_depIdxs,
+		EnumInfos:         file_beryllium_v1_daemon_proto_enumTypes,
 		MessageInfos:      file_beryllium_v1_daemon_proto_msgTypes,
 	}.Build()
 	File_beryllium_v1_daemon_proto = out.File

@@ -243,8 +243,16 @@ func (a *app) printStatus(st *berylliumv1.ConnectionStatus) error {
 	if tr := st.GetTraffic(); tr != nil {
 		fmt.Fprintf(a.out, "traffic:  ↑ %s  ↓ %s\n", bytesHuman(tr.GetUploadBytesTotal()), bytesHuman(tr.GetDownloadBytesTotal()))
 	}
-	if n := st.GetRecovery().GetCount(); n > 0 {
-		fmt.Fprintf(a.out, "restarts: %d\n", n)
+	if r := st.GetRecovery(); r.GetCount() > 0 {
+		fmt.Fprintf(a.out, "recovery: %d", r.GetCount())
+		if res := r.GetLastResult(); res != "" {
+			trigger := strings.ReplaceAll(strings.ToLower(enumName(r.GetLastTrigger().String(), "RECOVERY_TRIGGER_")), "_", " ")
+			fmt.Fprintf(a.out, "; last after %s: %s in %s", trigger, res, r.GetLastDuration().AsDuration().Round(time.Millisecond))
+			if at := r.GetLastAt(); at != nil {
+				fmt.Fprintf(a.out, " (%s ago)", time.Since(at.AsTime()).Round(time.Second))
+			}
+		}
+		fmt.Fprintln(a.out)
 	}
 	if e := st.GetError(); e != nil {
 		fmt.Fprintln(a.out, "error:   ", e.GetMessage())

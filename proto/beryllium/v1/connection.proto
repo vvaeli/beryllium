@@ -79,7 +79,8 @@ message ConnectionStatus {
   google.protobuf.Timestamp connected_since = 6;
   TrafficStats traffic = 7;
   RecoveryStats recovery = 8;
-  // Set in FAILED state.
+  // Why the state isn't CONNECTED: set in FAILED, and in DEGRADED with
+  // NETWORK_UNAVAILABLE (no network) or CAPTIVE_PORTAL (Wi-Fi login).
   ErrorDetail error = 9;
   // host:port of the local mixed (HTTP + SOCKS5) proxy while connected.
   string local_proxy = 10;
@@ -93,9 +94,13 @@ message TrafficStats {
 }
 
 message RecoveryStats {
-  // Recoveries since connect.
+  // Recoveries since connect (including failed attempts and core
+  // restarts after a crash).
   uint32 count = 1;
   RecoveryTrigger last_trigger = 2;
   google.protobuf.Timestamp last_at = 3;
+  // From the trigger (e.g. wake) until the tunnel worked again.
   google.protobuf.Duration last_duration = 4;
+  // What fixed it, e.g. "restarted sing-box", or why recovery failed.
+  string last_result = 5;
 }

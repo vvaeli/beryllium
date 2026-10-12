@@ -15,11 +15,13 @@ import (
 	berylliumv1 "github.com/vvaeli/beryllium/gen/go/beryllium/v1"
 	"github.com/vvaeli/beryllium/internal/core"
 	"github.com/vvaeli/beryllium/internal/ipc"
+	"github.com/vvaeli/beryllium/internal/netwatch"
 	"github.com/vvaeli/beryllium/internal/paths"
 	"github.com/vvaeli/beryllium/internal/routing"
 	"github.com/vvaeli/beryllium/internal/store"
 	"github.com/vvaeli/beryllium/internal/subscription"
 	"github.com/vvaeli/beryllium/internal/version"
+	"github.com/vvaeli/beryllium/internal/watchdog"
 	"google.golang.org/grpc"
 )
 
@@ -45,6 +47,14 @@ type Options struct {
 	// CoreLogLevel for sing-box/Xray/mihomo (debug|info|warn|error);
 	// empty means warn.
 	CoreLogLevel string
+
+	// For hermetic tests: ProbeURLs replace the public generate_204
+	// endpoints the watchdog checks the tunnel with, Reach replaces the
+	// direct connectivity check, and NoSystemEvents turns off sleep, wake
+	// and network change monitoring.
+	ProbeURLs      []string
+	Reach          func(context.Context) watchdog.Reach
+	NoSystemEvents bool
 }
 
 // Daemon is a running berylliumd instance.
@@ -53,6 +63,7 @@ type Daemon struct {
 	log       *slog.Logger
 	userAgent string
 	coreLevel string
+	opts      Options
 	started   time.Time
 	subs      *subscription.Manager
 	rt        *core.Runtime
@@ -61,6 +72,7 @@ type Daemon struct {
 	settings  *settingsStore
 	routes    *routing.Manager
 	conn      *connector
+	wd        *watchdog.Watchdog
 
 	shutdownOnce sync.Once
 	shutdownCh   chan struct{}
@@ -72,7 +84,7 @@ func New(o Options) *Daemon {
 	if ua == "" {
 		ua = DefaultUserAgent
 	}
-	return &Daemon{paths: o.Paths, log: o.Log, userAgent: ua, coreLevel: o.CoreLogLevel, shutdownCh: make(chan struct{})}
+	return &Daemon{paths: o.Paths, log: o.Log, userAgent: ua, coreLevel: o.CoreLogLevel, opts: o, shutdownCh: make(chan struct{})}
 }
 
 // Run serves the API until ctx is canceled or a Shutdown RPC arrives, then
@@ -113,7 +125,9 @@ func (d *Daemon) Run(ctx context.Context) error {
 		return err
 	}
 	d.conn = &connector{log: d.log, paths: d.paths, rt: d.rt, bins: bins, subs: d.subs, routes: d.routes,
-		settings: d.settings, pinger: d.pinger, latency: d.latency}
+		settings: d.settings, pinger: d.pinger, latency: d.latency, probeURLs: d.opts.ProbeURLs, reach: d.opts.Reach}
+	d.wd = watchdog.New(recoveryTarget{d.conn}, d.conn.watchdogConfig, nil, d.log)
+	d.conn.wd = d.wd
 	d.conn.restoreStale(ctx)
 	defer d.conn.shutdown()
 	d.settings.onChange = d.conn.settingsChanged
@@ -144,6 +158,14 @@ func (d *Daemon) Run(ctx context.Context) error {
 	defer stopBackground()
 	go d.subs.Run(bgCtx, time.Minute)
 	go d.routes.Run(bgCtx)
+	go d.wd.Run(bgCtx)
+	if !d.opts.NoSystemEvents {
+		go netwatch.Run(bgCtx, d.log, core.TUNPrefixes(), netwatch.Events{
+			Sleep:     func() { d.wd.Sleep(bgCtx) },
+			Wake:      func(string) { d.wd.Trigger(bgCtx, watchdog.TriggerWake, false) },
+			NetChange: func(_, _ netwatch.Network) { d.wd.Trigger(bgCtx, watchdog.TriggerNetChange, false) },
+		})
+	}
 
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.Serve(ln) }()

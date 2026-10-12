@@ -78,7 +78,7 @@ func newRoot(out io.Writer) *cobra.Command {
 
 	root.AddCommand(a.versionCmd(), a.subCmd(), a.serversCmd(), a.importCmd(), a.shareCmd(),
 		a.connectCmd(), a.disconnectCmd(), a.statusCmd(), a.testCmd(), a.pingCmd(),
-		a.modeCmd(), a.envCmd(), a.rulesCmd(), a.dnsCmd(), a.routingCmd())
+		a.modeCmd(), a.envCmd(), a.rulesCmd(), a.dnsCmd(), a.routingCmd(), a.debugCmd())
 	return root
 }
 

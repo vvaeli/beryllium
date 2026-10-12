@@ -19,9 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	DaemonService_GetVersion_FullMethodName = "/beryllium.v1.DaemonService/GetVersion"
-	DaemonService_Health_FullMethodName     = "/beryllium.v1.DaemonService/Health"
-	DaemonService_Shutdown_FullMethodName   = "/beryllium.v1.DaemonService/Shutdown"
+	DaemonService_GetVersion_FullMethodName    = "/beryllium.v1.DaemonService/GetVersion"
+	DaemonService_Health_FullMethodName        = "/beryllium.v1.DaemonService/Health"
+	DaemonService_Shutdown_FullMethodName      = "/beryllium.v1.DaemonService/Shutdown"
+	DaemonService_SimulateEvent_FullMethodName = "/beryllium.v1.DaemonService/SimulateEvent"
 )
 
 // DaemonServiceClient is the client API for DaemonService service.
@@ -31,6 +32,9 @@ type DaemonServiceClient interface {
 	GetVersion(ctx context.Context, in *GetVersionRequest, opts ...grpc.CallOption) (*GetVersionResponse, error)
 	Health(ctx context.Context, in *HealthRequest, opts ...grpc.CallOption) (*HealthResponse, error)
 	Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error)
+	// Debugging: runs the watchdog's handling of an event without the event
+	// happening (ROADMAP 7.17). Returns once the event was handled.
+	SimulateEvent(ctx context.Context, in *SimulateEventRequest, opts ...grpc.CallOption) (*SimulateEventResponse, error)
 }
 
 type daemonServiceClient struct {
@@ -71,6 +75,16 @@ func (c *daemonServiceClient) Shutdown(ctx context.Context, in *ShutdownRequest,
 	return out, nil
 }
 
+func (c *daemonServiceClient) SimulateEvent(ctx context.Context, in *SimulateEventRequest, opts ...grpc.CallOption) (*SimulateEventResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SimulateEventResponse)
+	err := c.cc.Invoke(ctx, DaemonService_SimulateEvent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DaemonServiceServer is the server API for DaemonService service.
 // All implementations must embed UnimplementedDaemonServiceServer
 // for forward compatibility.
@@ -78,6 +92,9 @@ type DaemonServiceServer interface {
 	GetVersion(context.Context, *GetVersionRequest) (*GetVersionResponse, error)
 	Health(context.Context, *HealthRequest) (*HealthResponse, error)
 	Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error)
+	// Debugging: runs the watchdog's handling of an event without the event
+	// happening (ROADMAP 7.17). Returns once the event was handled.
+	SimulateEvent(context.Context, *SimulateEventRequest) (*SimulateEventResponse, error)
 	mustEmbedUnimplementedDaemonServiceServer()
 }
 
@@ -96,6 +113,9 @@ func (UnimplementedDaemonServiceServer) Health(context.Context, *HealthRequest) 
 }
 func (UnimplementedDaemonServiceServer) Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Shutdown not implemented")
+}
+func (UnimplementedDaemonServiceServer) SimulateEvent(context.Context, *SimulateEventRequest) (*SimulateEventResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SimulateEvent not implemented")
 }
 func (UnimplementedDaemonServiceServer) mustEmbedUnimplementedDaemonServiceServer() {}
 func (UnimplementedDaemonServiceServer) testEmbeddedByValue()                       {}
@@ -172,6 +192,24 @@ func _DaemonService_Shutdown_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DaemonService_SimulateEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SimulateEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DaemonServiceServer).SimulateEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DaemonService_SimulateEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DaemonServiceServer).SimulateEvent(ctx, req.(*SimulateEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DaemonService_ServiceDesc is the grpc.ServiceDesc for DaemonService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -190,6 +228,10 @@ var DaemonService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Shutdown",
 			Handler:    _DaemonService_Shutdown_Handler,
+		},
+		{
+			MethodName: "SimulateEvent",
+			Handler:    _DaemonService_SimulateEvent_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

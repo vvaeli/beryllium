@@ -510,7 +510,8 @@ type ConnectionStatus struct {
 	ConnectedSince *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=connected_since,json=connectedSince,proto3" json:"connected_since,omitempty"`
 	Traffic        *TrafficStats          `protobuf:"bytes,7,opt,name=traffic,proto3" json:"traffic,omitempty"`
 	Recovery       *RecoveryStats         `protobuf:"bytes,8,opt,name=recovery,proto3" json:"recovery,omitempty"`
-	// Set in FAILED state.
+	// Why the state isn't CONNECTED: set in FAILED, and in DEGRADED with
+	// NETWORK_UNAVAILABLE (no network) or CAPTIVE_PORTAL (Wi-Fi login).
 	Error *ErrorDetail `protobuf:"bytes,9,opt,name=error,proto3" json:"error,omitempty"`
 	// host:port of the local mixed (HTTP + SOCKS5) proxy while connected.
 	LocalProxy    string `protobuf:"bytes,10,opt,name=local_proxy,json=localProxy,proto3" json:"local_proxy,omitempty"`
@@ -688,11 +689,15 @@ func (x *TrafficStats) GetDownloadBytesTotal() uint64 {
 
 type RecoveryStats struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Recoveries since connect.
-	Count         uint32                 `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
-	LastTrigger   RecoveryTrigger        `protobuf:"varint,2,opt,name=last_trigger,json=lastTrigger,proto3,enum=beryllium.v1.RecoveryTrigger" json:"last_trigger,omitempty"`
-	LastAt        *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=last_at,json=lastAt,proto3" json:"last_at,omitempty"`
-	LastDuration  *durationpb.Duration   `protobuf:"bytes,4,opt,name=last_duration,json=lastDuration,proto3" json:"last_duration,omitempty"`
+	// Recoveries since connect (including failed attempts and core
+	// restarts after a crash).
+	Count       uint32                 `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
+	LastTrigger RecoveryTrigger        `protobuf:"varint,2,opt,name=last_trigger,json=lastTrigger,proto3,enum=beryllium.v1.RecoveryTrigger" json:"last_trigger,omitempty"`
+	LastAt      *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=last_at,json=lastAt,proto3" json:"last_at,omitempty"`
+	// From the trigger (e.g. wake) until the tunnel worked again.
+	LastDuration *durationpb.Duration `protobuf:"bytes,4,opt,name=last_duration,json=lastDuration,proto3" json:"last_duration,omitempty"`
+	// What fixed it, e.g. "restarted sing-box", or why recovery failed.
+	LastResult    string `protobuf:"bytes,5,opt,name=last_result,json=lastResult,proto3" json:"last_result,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -755,6 +760,13 @@ func (x *RecoveryStats) GetLastDuration() *durationpb.Duration {
 	return nil
 }
 
+func (x *RecoveryStats) GetLastResult() string {
+	if x != nil {
+		return x.LastResult
+	}
+	return ""
+}
+
 var File_beryllium_v1_connection_proto protoreflect.FileDescriptor
 
 const file_beryllium_v1_connection_proto_rawDesc = "" +
@@ -794,12 +806,14 @@ const file_beryllium_v1_connection_proto_rawDesc = "" +
 	"\x14upload_bytes_per_sec\x18\x01 \x01(\x04R\x11uploadBytesPerSec\x123\n" +
 	"\x16download_bytes_per_sec\x18\x02 \x01(\x04R\x13downloadBytesPerSec\x12,\n" +
 	"\x12upload_bytes_total\x18\x03 \x01(\x04R\x10uploadBytesTotal\x120\n" +
-	"\x14download_bytes_total\x18\x04 \x01(\x04R\x12downloadBytesTotal\"\xdc\x01\n" +
+	"\x14download_bytes_total\x18\x04 \x01(\x04R\x12downloadBytesTotal\"\xfd\x01\n" +
 	"\rRecoveryStats\x12\x14\n" +
 	"\x05count\x18\x01 \x01(\rR\x05count\x12@\n" +
 	"\flast_trigger\x18\x02 \x01(\x0e2\x1d.beryllium.v1.RecoveryTriggerR\vlastTrigger\x123\n" +
 	"\alast_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x06lastAt\x12>\n" +
-	"\rlast_duration\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\flastDuration*\x98\x02\n" +
+	"\rlast_duration\x18\x04 \x01(\v2\x19.google.protobuf.DurationR\flastDuration\x12\x1f\n" +
+	"\vlast_result\x18\x05 \x01(\tR\n" +
+	"lastResult*\x98\x02\n" +
 	"\x0fConnectionState\x12 \n" +
 	"\x1cCONNECTION_STATE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dCONNECTION_STATE_DISCONNECTED\x10\x01\x12\x1f\n" +

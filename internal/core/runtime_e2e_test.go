@@ -166,6 +166,22 @@ func TestRuntimeEndToEnd(t *testing.T) {
 			if err != nil || tr.Download == 0 {
 				t.Fatalf("Traffic = %+v, %v", tr, err)
 			}
+			// One answering URL is enough.
+			if lat, err := r.Probe(context.Background(), []string{"http://127.0.0.1:1/", target.URL}); err != nil || lat <= 0 {
+				t.Fatalf("Probe = %v, %v", lat, err)
+			}
+			if _, err := r.Probe(context.Background(), []string{"http://127.0.0.1:1/"}); err == nil {
+				t.Fatal("Probe of a dead URL succeeded")
+			}
+			if err := r.ResetConnections(context.Background()); err != nil {
+				t.Fatalf("ResetConnections: %v", err)
+			}
+			if st, err := r.Reconfigure(context.Background(), ConnectOptions{}); err != nil || st.Core != tc.wantCore {
+				t.Fatalf("Reconfigure = %+v, %v", st, err)
+			}
+			if got := getThrough(t, r, target.URL); got != "hello through the tunnel" {
+				t.Fatalf("after restart: body = %q", got)
+			}
 			if st := r.Disconnect(); st.State != StateDisconnected {
 				t.Fatalf("after disconnect: %+v", st)
 			}

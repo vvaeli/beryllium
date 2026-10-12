@@ -47,6 +47,8 @@ fetch-cores *args:
 
 # Tests in a Linux container like CI (unprivileged, no ICMP); needs Docker (colima on macOS)
 test-linux: (fetch-linux-cores)
+    # Modules are fetched as root: the cache volume isn't writable by uid 1000.
+    docker run --rm -v beryllium-gomod:/go/pkg/mod -v "$PWD":/src -w /src golang:1.27 go mod download
     docker run --rm --sysctl net.ipv4.ping_group_range="1 0" --user 1000:1000 \
         -e HOME=/tmp -e GOCACHE=/tmp/gocache -v beryllium-gomod:/go/pkg/mod \
         -v "$PWD":/src -w /src golang:1.27 go test -race ./...
