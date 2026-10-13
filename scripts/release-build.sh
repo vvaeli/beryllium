@@ -37,9 +37,9 @@ cp -R packaging "$out/packaging"
 exe="" cli=./beryl
 [ "$goos" = windows ] && exe=.exe cli=beryl.exe
 case "$goos" in
-windows) install="berylliumd$exe -cores-dir \"%CD%\\cores\" install   (in an Administrator terminal)
+windows) install="berylliumd$exe install   (in an Administrator terminal)
 berylliumd$exe start" ;;
-*) install="sudo ./berylliumd -cores-dir \"\$PWD/cores\" install
+*) install="sudo ./berylliumd install
 sudo ./berylliumd start" ;;
 esac
 cat >"$out/INSTALL.txt" <<TXT

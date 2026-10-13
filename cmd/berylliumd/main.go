@@ -1,7 +1,9 @@
 // Command berylliumd is the privileged Beryllium daemon.
 //
 //	berylliumd [flags]                    run (in foreground or under the service manager)
-//	berylliumd [flags] install            register the system service; the invoking user gets IPC access
+//	berylliumd [flags] install            register the system service; the invoking user gets IPC access;
+//	                                      cores are copied to the default cores dir from ./cores,
+//	                                      cores/ next to the executable or the repo's cores/bin/<os>-<arch>
 //	berylliumd uninstall|start|stop|restart|status
 //
 // Service managers: systemd, OpenRC, SysV, launchd and Windows services via
@@ -138,6 +140,9 @@ func control(svc service.Service, cmd string, p paths.Paths) error {
 		if err := requireAdmin(); err != nil {
 			return err
 		}
+		if err := installCores(p.CoresDir, isSet("cores-dir"), coreSources(), os.Stdout); err != nil {
+			return err
+		}
 		if err := grantInstallingUser(p); err != nil {
 			return fmt.Errorf("record IPC access: %w", err)
 		}
@@ -192,6 +197,9 @@ func controlNative(in initSystem, cmd string, p paths.Paths, args []string) erro
 	}
 	switch cmd {
 	case "install":
+		if err := installCores(p.CoresDir, isSet("cores-dir"), coreSources(), os.Stdout); err != nil {
+			return err
+		}
 		if err := grantInstallingUser(p); err != nil {
 			return fmt.Errorf("record IPC access: %w", err)
 		}
