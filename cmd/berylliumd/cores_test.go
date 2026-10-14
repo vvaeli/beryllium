@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -37,7 +38,8 @@ func TestInstallCores(t *testing.T) {
 			if string(got) != string(k) {
 				t.Fatalf("%s = %q", k, got)
 			}
-			if fi, _ := os.Stat(bins.Path(k)); fi.Mode().Perm() != 0o755 {
+			// Windows has no unix permission bits.
+			if fi, _ := os.Stat(bins.Path(k)); runtime.GOOS != "windows" && fi.Mode().Perm() != 0o755 {
 				t.Fatalf("%s mode %v", k, fi.Mode())
 			}
 		}
